@@ -1,0 +1,2590 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WATHIQ | وَثِق — نظام إدارة الحضور الذكي بالبطاقات الرقمية QR</title>
+    <!-- Google Fonts: Cairo (Arabic) & Inter (English) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Real Camera QR Scanner Library -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- QR Code Generator for Printable/Scannable Trainee ID Cards -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        navy: {
+                            950: '#08182E',
+                            900: '#0F294A',
+                            800: '#163B6B',
+                            700: '#1E3A5F',
+                            600: '#274C7E',
+                            100: '#E6EEF8',
+                            50: '#F2F6FC',
+                        },
+                        surface: '#F4F6F9',
+                    },
+                    fontFamily: {
+                        arabic: ['Cairo', 'sans-serif'],
+                        english: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html[dir="rtl"] body { font-family: 'Cairo', sans-serif; }
+        html[dir="ltr"] body { font-family: 'Inter', sans-serif; }
+
+        .view-section {
+            animation: fadeIn 0.25s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Html5-qrcode video styling override for clean framing */
+        #qrReaderBox video {
+            border-radius: 1rem !important;
+            object-fit: cover !important;
+            width: 100% !important;
+        }
+        #qrReaderBox {
+            border: none !important;
+        }
+
+        @keyframes scanLaser {
+            0%, 100% { top: 12%; }
+            50% { top: 86%; }
+        }
+        .scanner-laser {
+            position: absolute;
+            left: 8%;
+            right: 8%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #10B981, #34D399, #10B981, transparent);
+            box-shadow: 0 0 12px #10B981;
+            animation: scanLaser 2.2s ease-in-out infinite;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #F4F6F9; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: #FFFFFF !important; }
+            .print-full { width: 100% !important; margin: 0 !important; padding: 0 !important; box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body class="bg-surface text-slate-800 min-h-screen flex flex-col antialiased selection:bg-navy-900 selection:text-white">
+
+    <!-- Innovation Competition & Standalone Prototype Banner -->
+    <div class="bg-navy-950 text-white text-xs sm:text-sm py-2 px-4 border-b border-navy-800 no-print">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/40 shrink-0" data-i18n="protoBadge">
+                    نموذج مسابقة الابتكار • PROTOTYPE
+                </span>
+                <span class="text-slate-200 leading-snug" data-i18n="protoNotice">
+                    نموذج أولي لمسابقة الابتكار والاختراع — بيانات تجريبية افتراضية، وغير مرتبط رسمياً بنظام رايات (TVTC Rayat).
+                </span>
+            </div>
+            <div class="hidden md:flex items-center gap-3 text-xs">
+                <button onclick="resetDemoData()" class="text-slate-300 hover:text-white underline decoration-slate-500 underline-offset-4 transition" data-i18n="resetDemoBtn">
+                    إعادة ضبط البيانات التجريبية
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs no-print">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <!-- Brand Identity -->
+            <button onclick="navigateTo('home')" class="flex items-center gap-3 text-start focus:outline-none group">
+                <div class="w-10 h-10 rounded-xl bg-navy-900 flex items-center justify-center text-white shadow-md group-hover:bg-navy-700 transition">
+                    <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
+                        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
+                        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
+                        <path d="M14 14h3v3h-3zM18 17h3v4h-4v-3" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6.5 6.5h.01M17.5 6.5h.01M6.5 17.5h.01" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xl font-extrabold tracking-tight text-navy-900">وَثِق</span>
+                        <span class="text-slate-300 font-light">|</span>
+                        <span class="text-lg font-bold tracking-wide text-navy-700 font-english">WATHIQ</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 -mt-1 hidden sm:block" data-i18n="brandTagline">تحضير المتدربات عبر بطاقات QR الذكية</p>
+                </div>
+            </button>
+
+            <!-- Desktop Navigation -->
+            <nav class="hidden lg:flex items-center gap-1">
+                <button onclick="navigateTo('home')" data-nav="home" class="nav-btn px-3 py-2 rounded-lg text-sm font-semibold transition" data-i18n="navHome">الرئيسية</button>
+                <button onclick="navigateTo('dashboard')" data-nav="dashboard" class="nav-btn px-3 py-2 rounded-lg text-sm font-semibold transition" data-i18n="navDashboard">لوحة المدربة</button>
+                <button onclick="navigateTo('courses')" data-nav="courses" class="nav-btn px-3 py-2 rounded-lg text-sm font-semibold transition" data-i18n="navCourses">المقررات والشعب</button>
+                <button onclick="navigateTo('scanner')" data-nav="scanner" class="nav-btn px-3 py-2 rounded-lg text-sm font-semibold transition" data-i18n="navScanner">مسح بطاقات QR</button>
+                <button onclick="navigateTo('records')" data-nav="records" class="nav-btn px-3 py-2 rounded-lg text-sm font-semibold transition" data-i18n="navRecords">سجلات الحضور</button>
+                <button onclick="navigateTo('students')" data-nav="students" class="nav-btn px-3 py-2 rounded-lg text-sm font-semibold transition" data-i18n="navStudents">قوائم المتدربات</button>
+                <button onclick="navigateTo('reports')" data-nav="reports" class="nav-btn px-3 py-2 rounded-lg text-sm font-semibold transition" data-i18n="navReports">التقارير</button>
+            </nav>
+
+            <!-- Right Controls: Language Toggle & Instructor Account -->
+            <div class="flex items-center gap-2 sm:gap-2.5">
+                <button onclick="toggleLanguage()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-navy-50 hover:border-navy-200 text-navy-900 text-xs sm:text-sm font-bold transition" title="Switch Language / تغيير اللغة">
+                    <svg class="w-4 h-4 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"/>
+                    </svg>
+                    <span id="langToggleLabel">English</span>
+                </button>
+
+                <button id="headerAuthBtn" onclick="handleHeaderAuthClick()" class="px-3.5 py-1.5 rounded-xl bg-navy-900 hover:bg-navy-700 text-white text-xs sm:text-sm font-semibold transition shadow-xs flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    <span id="headerAuthLabel" data-i18n="navLogin">دخول المدربة</span>
+                </button>
+
+                <!-- Mobile Hamburger Toggle -->
+                <button onclick="toggleMobileMenu()" class="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100 focus:outline-none" aria-label="Menu">
+                    <svg id="menuIconOpen" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                    <svg id="menuIconClose" class="w-6 h-6 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Navigation Drawer -->
+        <div id="mobileMenu" class="hidden lg:hidden bg-white border-t border-slate-200 px-4 py-3 space-y-1 shadow-lg">
+            <button onclick="navigateTo('home'); toggleMobileMenu()" data-nav="home" class="nav-btn-mobile w-full text-start px-3 py-2.5 rounded-xl text-sm font-semibold" data-i18n="navHome">الرئيسية</button>
+            <button onclick="navigateTo('dashboard'); toggleMobileMenu()" data-nav="dashboard" class="nav-btn-mobile w-full text-start px-3 py-2.5 rounded-xl text-sm font-semibold" data-i18n="navDashboard">لوحة المدربة</button>
+            <button onclick="navigateTo('courses'); toggleMobileMenu()" data-nav="courses" class="nav-btn-mobile w-full text-start px-3 py-2.5 rounded-xl text-sm font-semibold" data-i18n="navCourses">المقررات والشعب</button>
+            <button onclick="navigateTo('scanner'); toggleMobileMenu()" data-nav="scanner" class="nav-btn-mobile w-full text-start px-3 py-2.5 rounded-xl text-sm font-semibold" data-i18n="navScanner">مسح بطاقات QR</button>
+            <button onclick="navigateTo('records'); toggleMobileMenu()" data-nav="records" class="nav-btn-mobile w-full text-start px-3 py-2.5 rounded-xl text-sm font-semibold" data-i18n="navRecords">سجلات الحضور</button>
+            <button onclick="navigateTo('students'); toggleMobileMenu()" data-nav="students" class="nav-btn-mobile w-full text-start px-3 py-2.5 rounded-xl text-sm font-semibold" data-i18n="navStudents">قوائم المتدربات</button>
+            <button onclick="navigateTo('reports'); toggleMobileMenu()" data-nav="reports" class="nav-btn-mobile w-full text-start px-3 py-2.5 rounded-xl text-sm font-semibold" data-i18n="navReports">التقارير</button>
+            <div class="pt-2 border-t border-slate-100">
+                <button onclick="resetDemoData(); toggleMobileMenu()" class="w-full text-start px-3 py-2 rounded-xl text-xs font-semibold text-amber-700 bg-amber-50" data-i18n="resetDemoBtn">
+                    إعادة ضبط البيانات التجريبية
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Logged-In Instructor Context Bar -->
+    <div id="instructorContextBar" class="hidden bg-navy-900 text-white py-2.5 px-4 border-b border-navy-800 no-print">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm">
+            <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded-full bg-navy-700 border border-navy-500 flex items-center justify-center font-bold text-xs">د.ن</div>
+                <div>
+                    <span class="font-bold" data-i18n="welcomeDrNouraShort">أهلاً بكِ د. نورة</span>
+                    <span class="mx-1.5 text-navy-500">|</span>
+                    <span class="text-slate-300 text-xs" data-i18n="deptLabel">قسم التقنية الإدارية — الكلية التقنية للبنات</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-slate-300 text-xs" data-i18n="activeCourseLabel">المقرر المحدد:</span>
+                <span id="activeCourseBadge" class="px-2.5 py-0.5 rounded-lg bg-white/10 text-white font-semibold text-xs border border-white/15">
+                    إدارة الجودة الشاملة (TQM 204 - شعبة 101)
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Stack -->
+    <div id="toastContainer" class="fixed bottom-20 lg:bottom-6 end-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 mb-16 lg:mb-0">
+
+        <!-- ===================================================================== -->
+        <!-- 1. HOMEPAGE SECTION -->
+        <!-- ===================================================================== -->
+        <section id="view-home" class="view-section space-y-10">
+            <div class="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+                <div class="grid grid-cols-1 lg:grid-cols-12">
+                    <div class="lg:col-span-7 p-6 sm:p-10 lg:p-12 flex flex-col justify-center space-y-6">
+                        <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-navy-50 border border-navy-100 text-navy-800 text-xs sm:text-sm font-bold w-fit">
+                            <span class="w-2 h-2 rounded-full bg-navy-700"></span>
+                            <span data-i18n="heroPill">نظام تحضير المتدربات الذكي عبر بطاقات QR</span>
+                        </div>
+
+                        <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-navy-900 leading-tight">
+                            <span data-i18n="heroTitleMain">تحضير دقيق وموثوق للمتدربات في ثوانٍ مع</span>
+                            <span class="text-navy-700 underline decoration-navy-200 decoration-4 underline-offset-8">وَثِق | WATHIQ</span>
+                        </h1>
+
+                        <p class="text-slate-600 text-base sm:text-lg leading-relaxed max-w-2xl" data-i18n="heroSubtitle">
+                            منصة إدارية متكاملة مصممة لعضوات هيئة التدريب في الكليات التقنية لتسجيل حضور المتدربات عبر مسح بطاقات الهوية الجامعية المزودة برمز QR باستخدام كاميرا الجهاز، مع منع التكرار وتوليد التقارير الفورية.
+                        </p>
+
+                        <!-- Competition & Prototype Disclaimer -->
+                        <div class="p-4 rounded-2xl bg-amber-50/90 border border-amber-200 flex items-start gap-3">
+                            <svg class="w-5 h-5 text-amber-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <div class="text-xs sm:text-sm text-amber-900">
+                                <p class="font-bold" data-i18n="disclaimerTitle">نموذج أولي لمسابقة الابتكار والاختراع:</p>
+                                <p class="mt-0.5 text-amber-800" data-i18n="disclaimerBody">
+                                    يعتمد هذا النظام على بيانات تجريبية افتراضية بالكامل لعرض فكرة المشروع وسير العمل، ولا يرتبط رسمياً أو تقنياً بنظام (رايات) التابع للمؤسسة العامة للتدريب التقني والمهني (TVTC).
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Primary Action Buttons -->
+                        <div class="flex flex-wrap items-center gap-3 pt-1">
+                            <button onclick="loginAsDrNoura()" class="px-6 py-3.5 rounded-2xl bg-navy-900 hover:bg-navy-700 text-white font-bold text-sm sm:text-base shadow-md hover:shadow-lg transition flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/>
+                                </svg>
+                                <span data-i18n="ctaDemoDrNoura">دخول لوحة د. نورة (Demo)</span>
+                            </button>
+
+                            <button onclick="navigateTo('login')" class="px-6 py-3.5 rounded-2xl bg-navy-50 hover:bg-navy-100 text-navy-900 border border-navy-200 font-bold text-sm sm:text-base transition flex items-center gap-2">
+                                <span data-i18n="ctaLoginPage">صفحة تسجيل الدخول</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right Visual ID Card & Scanner Preview -->
+                    <div class="lg:col-span-5 bg-gradient-to-br from-navy-900 via-navy-800 to-navy-700 p-8 sm:p-10 text-white flex flex-col justify-between relative overflow-hidden">
+                        <div class="relative z-10 space-y-5">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs uppercase tracking-wider text-navy-100 font-semibold" data-i18n="heroCardHeader">بطاقة المتدربة الرقمية QR</span>
+                                <span class="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 text-xs font-bold">● SMART ID SCAN</span>
+                            </div>
+
+                            <!-- Sample Female Trainee ID Card Mockup -->
+                            <div class="bg-white text-navy-900 rounded-2xl p-5 shadow-xl space-y-4">
+                                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-11 h-11 rounded-xl bg-navy-900 text-white flex items-center justify-center font-extrabold text-sm">
+                                            س.أ
+                                        </div>
+                                        <div>
+                                            <p class="text-[11px] font-bold text-navy-600" data-i18n="traineeCardRole">متدربة — الكلية التقنية</p>
+                                            <h3 class="font-extrabold text-base text-navy-900" data-i18n="sampleTraineeName">سارة أحمد</h3>
+                                            <p class="text-xs font-english text-slate-500">ID: 445201</p>
+                                        </div>
+                                    </div>
+                                    <div class="w-14 h-14 rounded-xl bg-navy-50 border border-navy-200 p-1.5 flex items-center justify-center">
+                                        <svg class="w-full h-full text-navy-900" viewBox="0 0 24 24" fill="currentColor">
+                                            <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h3v2h-3v-2zm-5 0h2v2h-2v-2zm2 2h3v3h-3v-3zm-2 3h2v3h-2v-3zm5 0h3v3h-3v-3z"/>
+                                        </svg>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-between text-xs">
+                                    <span class="text-slate-500" data-i18n="sampleCourseHero">إدارة الجودة الشاملة • شعبة 101</span>
+                                    <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold" data-i18n="verifiedBadge">تم التحقق ✓</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="relative z-10 grid grid-cols-3 gap-3 pt-8 border-t border-white/10 mt-8 text-center">
+                            <div>
+                                <p class="text-2xl font-extrabold">1.5s</p>
+                                <p class="text-xs text-slate-300" data-i18n="statScanTime">سرعة المسح</p>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-extrabold">0%</p>
+                                <p class="text-xs text-slate-300" data-i18n="statDuplicate">تكرار الحضور</p>
+                            </div>
+                            <div>
+                                <p class="text-2xl font-extrabold">CSV/XLS</p>
+                                <p class="text-xs text-slate-300" data-i18n="statExport">تصدير فوري</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Workflow Steps -->
+            <div class="space-y-4">
+                <div>
+                    <h2 class="text-2xl font-bold text-navy-900" data-i18n="workflowHeading">آلية عمل نظام وَثِق في القاعة التدريبية</h2>
+                    <p class="text-slate-500 text-sm" data-i18n="workflowSubheading">خطوات عملية تحاكي سير العمل اليومي للمدربة أثناء المحاضرة</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
+                        <span class="w-8 h-8 rounded-xl bg-navy-900 text-white font-extrabold text-sm flex items-center justify-center">1</span>
+                        <h3 class="font-bold text-navy-900" data-i18n="step1Title">اختيار المقرر والشعبة</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed" data-i18n="step1Desc">تستعرض المدربة جدول محاضرات اليوم وتختار المقرر والشعبة المطلوب تحضيرها.</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
+                        <span class="w-8 h-8 rounded-xl bg-navy-900 text-white font-extrabold text-sm flex items-center justify-center">2</span>
+                        <h3 class="font-bold text-navy-900" data-i18n="step2Title">تشغيل جلسة المسح</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed" data-i18n="step2Desc">فتح كاميرا الجهاز لمسح بطاقات الهوية المزودة برمز QR الخاصة بالمتدربات.</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
+                        <span class="w-8 h-8 rounded-xl bg-navy-900 text-white font-extrabold text-sm flex items-center justify-center">3</span>
+                        <h3 class="font-bold text-navy-900" data-i18n="step3Title">التحقق ومنع التكرار</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed" data-i18n="step3Desc">يتعرف النظام تلقائياً على اسم المتدربة ورقمها التدريبي ويمنع تسجيلها مرتين.</p>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
+                        <span class="w-8 h-8 rounded-xl bg-navy-900 text-white font-extrabold text-sm flex items-center justify-center">4</span>
+                        <h3 class="font-bold text-navy-900" data-i18n="step4Title">إنهاء الجلسة والتقارير</h3>
+                        <p class="text-xs text-slate-600 leading-relaxed" data-i18n="step4Desc">اعتماد الغياب تلقائياً عند إنهاء المحاضرة وتصدير التقارير بصيغة CSV أو Excel.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- 2. INSTRUCTOR LOGIN SECTION -->
+        <!-- ===================================================================== -->
+        <section id="view-login" class="view-section hidden">
+            <div class="max-w-md mx-auto bg-white rounded-3xl border border-slate-200 shadow-xs p-6 sm:p-8 space-y-6">
+                <div class="text-center space-y-2">
+                    <div class="w-14 h-14 rounded-2xl bg-navy-900 text-white mx-auto flex items-center justify-center shadow-md">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <h2 class="text-2xl font-extrabold text-navy-900" data-i18n="loginTitle">بوابة دخول عضوات هيئة التدريب</h2>
+                    <p class="text-sm text-slate-500" data-i18n="loginSubtitle">سجّلي الدخول للوصول إلى جدول المحاضرات وإدارة تحضير المتدربات</p>
+                </div>
+
+                <form onsubmit="handleLoginSubmit(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" data-i18n="loginIdLabel">الرقم التدريبي للمدربة أو البريد الإلكتروني</label>
+                        <input type="text" id="loginIdentifier" required value="n.alotaibi@wathiq-demo.edu.sa"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-navy-700 focus:ring-2 focus:ring-navy-700/20 outline-none text-sm font-english transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1.5" data-i18n="loginPassLabel">كلمة المرور</label>
+                        <input type="password" id="loginPassword" required value="••••••••••••"
+                            class="w-full px-4 py-3 rounded-xl border border-slate-300 focus:border-navy-700 focus:ring-2 focus:ring-navy-700/20 outline-none text-sm transition">
+                    </div>
+
+                    <button type="submit" class="w-full py-3 rounded-xl bg-navy-900 hover:bg-navy-700 text-white font-bold text-sm shadow-sm transition" data-i18n="loginSubmitBtn">
+                        تسجيل الدخول
+                    </button>
+                </form>
+
+                <div class="relative flex py-1 items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-3 text-xs text-slate-400" data-i18n="orDivider">أو الدخول بحساب العرض التجريبي</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+
+                <button type="button" onclick="loginAsDrNoura()" class="w-full py-3 rounded-xl bg-navy-50 hover:bg-navy-100 text-navy-900 border border-navy-200 font-bold text-sm transition flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    <span data-i18n="demoLoginDrNouraBtn">دخول سريع: د. نورة العتيبي (Dr. Noura)</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- 3. REALISTIC INSTRUCTOR DASHBOARD ("أهلاً بكِ د. نورة / Welcome, Dr. Noura") -->
+        <!-- ===================================================================== -->
+        <section id="view-dashboard" class="view-section hidden space-y-6">
+            <!-- Top Welcome & Female Instructor Profile Card -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-xs">
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                    <div class="flex items-start sm:items-center gap-4">
+                        <div class="w-16 h-16 rounded-2xl bg-navy-900 text-white flex items-center justify-center text-xl font-extrabold shadow-md shrink-0">
+                            د.ن
+                        </div>
+                        <div class="space-y-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h2 class="text-2xl sm:text-3xl font-extrabold text-navy-900" data-i18n="welcomeDrNouraHeading">
+                                    أهلاً بكِ، د. نورة
+                                </h2>
+                                <span class="px-2.5 py-0.5 rounded-full bg-navy-50 text-navy-800 border border-navy-200 text-xs font-bold" data-i18n="instructorRank">
+                                    محاضرة أولى
+                                </span>
+                            </div>
+                            <p class="text-sm font-semibold text-slate-700" data-i18n="instructorFullNameTitle">
+                                د. نورة بنت سعد العتيبي • قسم التقنية الإدارية
+                            </p>
+                            <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 pt-0.5">
+                                <span><strong data-i18n="empIdLabel">الرقم الوظيفي:</strong> <span class="font-english font-semibold text-slate-700">FAC-4410</span></span>
+                                <span><strong data-i18n="emailLabel">البريد:</strong> <span class="font-english text-slate-700">n.alotaibi@wathiq-demo.edu.sa</span></span>
+                                <span><strong data-i18n="officeLabel">المكتب:</strong> <span data-i18n="officeValue">مبنى أ - الدور الثاني - مكتب 214</span></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2.5">
+                        <button onclick="openSampleCardsModal()" class="px-4 py-2.5 rounded-xl bg-navy-50 hover:bg-navy-100 text-navy-900 border border-navy-200 text-xs sm:text-sm font-bold transition flex items-center gap-2">
+                            <svg class="w-4 h-4 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/>
+                            </svg>
+                            <span data-i18n="viewSampleIdCardsBtn">بطاقات QR التجريبية للمتدربات</span>
+                        </button>
+                        <button onclick="navigateTo('scanner')" class="px-5 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-700 text-white text-xs sm:text-sm font-bold shadow-xs transition flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                            </svg>
+                            <span data-i18n="quickStartScanBtn">بدء مسح الحضور الآن</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard KPI Summary Cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500" data-i18n="dashKpiCourses">المقررات المسندة</p>
+                    <p id="dashTotalCourses" class="text-3xl font-extrabold text-navy-900 mt-1.5">4</p>
+                    <p class="text-[11px] text-navy-700 font-semibold mt-1" data-i18n="dashKpiSectionsSub">4 شعب تدريبية نشطة</p>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500" data-i18n="dashKpiTrainees">إجمالي المتدربات</p>
+                    <p id="dashTotalTrainees" class="text-3xl font-extrabold text-navy-900 mt-1.5">32</p>
+                    <p class="text-[11px] text-slate-500 mt-1" data-i18n="dashKpiTraineesSub">مسجلات في كافة الشعب</p>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500" data-i18n="dashKpiTodayLectures">محاضرات اليوم</p>
+                    <p class="text-3xl font-extrabold text-navy-900 mt-1.5">3</p>
+                    <p class="text-[11px] text-emerald-700 font-semibold mt-1" data-i18n="dashKpiActiveNow">1 جارية الآن • 2 قادمة</p>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500" data-i18n="dashKpiAttendanceRate">نسبة الحضور العامة</p>
+                    <p id="dashAvgRate" class="text-3xl font-extrabold text-emerald-600 mt-1.5">91.5%</p>
+                    <p class="text-[11px] text-slate-500 mt-1" data-i18n="dashKpiTermLabel">الفصل التدريبي الأول</p>
+                </div>
+            </div>
+
+            <!-- Today's Lecture Schedule & Quick Course Access -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Today's Lecture Schedule -->
+                <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-navy-900" data-i18n="todayScheduleTitle">جدول محاضرات اليوم</h3>
+                            <p class="text-xs text-slate-500" data-i18n="todayScheduleSub">الخميس • 12 نوفمبر 2026 — انقري على المحاضرة لبدء جلسة التحضير</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full bg-navy-50 text-navy-800 text-xs font-bold" data-i18n="lecturesCountBadge">3 محاضرات</span>
+                    </div>
+
+                    <div id="todayLecturesList" class="space-y-3">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+
+                <!-- Assigned Courses & Sections Compact List -->
+                <div class="lg:col-span-5 bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-4">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-navy-900" data-i18n="assignedCoursesBoxTitle">المقررات والشعب المسندة</h3>
+                            <p class="text-xs text-slate-500" data-i18n="assignedCoursesBoxSub">وصول سريع للقوائم والتقارير</p>
+                        </div>
+                        <button onclick="navigateTo('courses')" class="text-xs font-bold text-navy-700 hover:underline" data-i18n="viewAllBtn">عرض الكل</button>
+                    </div>
+
+                    <div id="dashboardCoursesMiniList" class="space-y-3">
+                        <!-- Rendered dynamically -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- 4. COURSE & SECTION SELECTION VIEW -->
+        <!-- ===================================================================== -->
+        <section id="view-courses" class="view-section hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-navy-900" data-i18n="coursesTitle">المقررات التدريبية والشعب</h2>
+                    <p class="text-sm text-slate-500" data-i18n="coursesSubtitle">اختاري المقرر والشعبة لبدء جلسة التحضير عبر بطاقات QR أو استعراض قائمة المتدربات</p>
+                </div>
+                <div class="flex items-center gap-2 bg-white px-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm">
+                    <span class="text-slate-500" data-i18n="termLabel">الفصل التدريبي:</span>
+                    <span class="font-bold text-navy-900" data-i18n="termValue">الأول 1448هـ / 2026</span>
+                </div>
+            </div>
+
+            <div id="coursesGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Populated dynamically -->
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- 5. QR ID CARD SCANNING & ATTENDANCE SESSION WORKFLOW -->
+        <!-- ===================================================================== -->
+        <section id="view-scanner" class="view-section hidden space-y-6">
+            <!-- Session Control Header -->
+            <div class="bg-white rounded-3xl border border-slate-200 p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-xs">
+                <div class="space-y-1.5">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span id="sessionCourseCode" class="px-2.5 py-0.5 rounded-lg bg-navy-900 text-white text-xs font-bold font-english">TQM 204</span>
+                        <span id="sessionSectionBadge" class="px-2.5 py-0.5 rounded-lg bg-navy-50 text-navy-800 border border-navy-200 text-xs font-bold">شعبة 101</span>
+                        <span id="sessionStateBadge" class="px-3 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                            <span id="sessionStateText" data-i18n="sessionLiveStatus">جلسة تحضير نشطة</span>
+                        </span>
+                    </div>
+                    <h2 id="sessionCourseTitle" class="text-xl sm:text-2xl font-extrabold text-navy-900">إدارة الجودة الشاملة</h2>
+                    <p id="sessionScheduleText" class="text-xs sm:text-sm text-slate-500">الأحد، الثلاثاء • 08:00 ص - 09:50 ص • قاعة 204</p>
+                </div>
+
+                <!-- Course Switcher & Session Lifecycle Buttons -->
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <select id="scannerCourseSelect" onchange="selectCourseById(this.value)" class="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-50 text-xs sm:text-sm font-bold text-navy-900 focus:outline-none focus:border-navy-700">
+                    </select>
+
+                    <button onclick="openSampleCardsModal()" class="px-3.5 py-2.5 rounded-xl bg-navy-50 hover:bg-navy-100 text-navy-900 border border-navy-200 text-xs sm:text-sm font-bold transition">
+                        <span data-i18n="sampleCardsShortBtn">بطاقات QR</span>
+                    </button>
+
+                    <button onclick="endAttendanceSession()" class="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs sm:text-sm font-bold shadow-xs transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                        <span data-i18n="endSessionBtn">إنهاء الجلسة وحفظ السجل</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Main Two-Column Scanner & Live Attendance Board -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                <!-- LEFT: DEVICE CAMERA QR SCANNER + MANUAL / SIMULATED CARD SCAN -->
+                <div class="lg:col-span-5 bg-navy-950 text-white rounded-3xl p-6 shadow-lg border border-navy-800 space-y-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400" data-i18n="cameraScannerTag">ماسح بطاقات الهوية QR</span>
+                            <h3 class="text-lg font-bold" data-i18n="scanTraineeCardHeading">مسح بطاقة المتدربة بالكاميرا</h3>
+                        </div>
+                        <button id="cameraToggleBtn" onclick="toggleCameraScanner()" class="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-navy-950 font-extrabold text-xs transition flex items-center gap-1.5 shadow-sm">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            <span id="cameraToggleLabel" data-i18n="startCameraBtn">تشغيل الكاميرا</span>
+                        </button>
+                    </div>
+
+                    <!-- Live Camera Viewport / Placeholder -->
+                    <div class="relative bg-navy-900 rounded-2xl border border-navy-700 min-h-[220px] flex flex-col items-center justify-center overflow-hidden p-3">
+                        <div id="qrReaderBox" class="w-full hidden"></div>
+
+                        <div id="cameraPlaceholder" class="flex flex-col items-center justify-center text-center py-6 px-4 space-y-3">
+                            <div class="w-28 h-28 relative border-2 border-dashed border-emerald-400/60 rounded-2xl flex items-center justify-center">
+                                <div class="scanner-laser"></div>
+                                <svg class="w-12 h-12 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                                </svg>
+                            </div>
+                            <p id="cameraStatusMessage" class="text-xs text-slate-300 max-w-xs" data-i18n="cameraPlaceholderHint">
+                                اضغطي على "تشغيل الكاميرا" لمسح رمز QR على بطاقة المتدربة، أو استخدمي محاكي المسح أدناه.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Last Scanned Trainee Feedback Banner -->
+                    <div id="lastScanResultBanner" class="hidden p-3.5 rounded-2xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-between gap-3">
+                        <div>
+                            <p class="text-[11px] font-bold text-emerald-300" data-i18n="lastScanSuccessTitle">تم التعرف على المتدربة وتسجيل حضورها:</p>
+                            <p id="lastScanTraineeInfo" class="text-sm font-extrabold text-white mt-0.5">سارة أحمد (445201)</p>
+                        </div>
+                        <span id="lastScanTimestamp" class="text-xs font-english text-emerald-200 bg-emerald-950/60 px-2.5 py-1 rounded-lg">08:05:12</span>
+                    </div>
+
+                    <!-- Quick Card Scan Simulator & ID Input -->
+                    <div class="pt-2 border-t border-navy-800 space-y-3">
+                        <label class="block text-xs font-semibold text-slate-300" data-i18n="simSelectTraineeLabel">
+                            محاكاة تمرير بطاقة متدربة (أو إدخال الرقم التدريبي):
+                        </label>
+                        <div class="flex gap-2">
+                            <select id="traineeSimSelect" onchange="document.getElementById('traineeScanInput').value = this.value" class="flex-1 px-3 py-2.5 rounded-xl bg-navy-900 border border-navy-700 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-400">
+                            </select>
+                            <button onclick="simulateNextUnscannedTrainee()" class="px-3 py-2.5 rounded-xl bg-navy-800 hover:bg-navy-700 border border-navy-600 text-emerald-300 text-xs font-bold shrink-0" title="Scan Next Trainee">
+                                +1 QR
+                            </button>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <input type="text" id="traineeScanInput" placeholder="WATHIQ-445201 / 445201" class="flex-1 px-3.5 py-2.5 rounded-xl bg-navy-900 border border-navy-700 text-white text-sm font-english focus:outline-none focus:border-emerald-400">
+                            <button onclick="handleManualOrSimulatedScan()" class="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-navy-950 font-extrabold text-xs sm:text-sm transition shrink-0" data-i18n="scanCardActionBtn">
+                                تسجيل البطاقة
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: LIVE SESSION ATTENDANCE ROSTER & COUNTERS -->
+                <div class="lg:col-span-7 bg-white rounded-3xl border border-slate-200 p-6 shadow-xs space-y-5">
+                    <!-- Live Counters Bar -->
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center">
+                            <p class="text-xs font-bold text-emerald-800" data-i18n="countPresentLabel">حاضرة</p>
+                            <p id="sessionPresentCount" class="text-2xl font-extrabold text-emerald-700 mt-0.5">0</p>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-center">
+                            <p class="text-xs font-bold text-rose-800" data-i18n="countAbsentLabel">غائبة / بانتظار المسح</p>
+                            <p id="sessionAbsentCount" class="text-2xl font-extrabold text-rose-700 mt-0.5">0</p>
+                        </div>
+                        <div class="p-3.5 rounded-2xl bg-navy-50 border border-navy-200 text-center">
+                            <p class="text-xs font-bold text-navy-800" data-i18n="countRateLabel">نسبة الحضور</p>
+                            <p id="sessionRatePercent" class="text-2xl font-extrabold text-navy-900 mt-0.5">0%</p>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar -->
+                    <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div id="sessionProgressBar" class="h-full bg-emerald-500 transition-all duration-500 rounded-full" style="width: 0%"></div>
+                    </div>
+
+                    <!-- Live Roster List -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-base font-extrabold text-navy-900" data-i18n="liveRosterHeading">قائمة المتدربات في الجلسة (تحديث فوري)</h3>
+                            <span class="text-xs text-slate-400" data-i18n="duplicateGuardBadge">حماية منع التكرار مفعّلة</span>
+                        </div>
+
+                        <div class="overflow-x-auto border border-slate-200 rounded-2xl">
+                            <table class="w-full text-start border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600 uppercase">
+                                        <th class="py-2.5 px-3 text-start" data-i18n="colStudentId">الرقم التدريبي</th>
+                                        <th class="py-2.5 px-3 text-start" data-i18n="colTraineeName">اسم المتدربة</th>
+                                        <th class="py-2.5 px-3 text-center" data-i18n="colScanTime">وقت المسح</th>
+                                        <th class="py-2.5 px-3 text-center" data-i18n="colStatus">الحالة</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="liveSessionRosterBody" class="divide-y divide-slate-100 text-xs sm:text-sm">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- 6. ATTENDANCE RECORDS HISTORY SECTION -->
+        <!-- ===================================================================== -->
+        <section id="view-records" class="view-section hidden space-y-6">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-navy-900" data-i18n="recordsTitle">سجلات الحضور والمحاضرات</h2>
+                    <p class="text-sm text-slate-500" data-i18n="recordsSubtitle">استعراض كافة الجلسات المعتمدة وتفاصيل حضور المتدربات حسب التاريخ والمقرر والشعبة</p>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div class="sm:col-span-2 relative">
+                    <input type="text" id="recordsSearchInput" oninput="renderAttendanceRecords()" placeholder="ابحثي باسم المقرر، الرمز، أو التاريخ..."
+                        class="w-full ps-10 pe-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-navy-700">
+                    <svg class="w-4 h-4 text-slate-400 absolute top-3.5 start-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <select id="recordsCourseFilter" onchange="renderAttendanceRecords()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-700 focus:outline-none focus:border-navy-700">
+                    </select>
+                </div>
+                <div>
+                    <input type="date" id="recordsDateFilter" onchange="renderAttendanceRecords()" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-english text-slate-700 focus:outline-none focus:border-navy-700">
+                </div>
+            </div>
+
+            <!-- Records Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-start border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase">
+                                <th class="py-3.5 px-4 text-start" data-i18n="colDate">التاريخ</th>
+                                <th class="py-3.5 px-4 text-start" data-i18n="colCourse">المقرر والشعبة</th>
+                                <th class="py-3.5 px-4 text-center" data-i18n="colPresent">حاضرات</th>
+                                <th class="py-3.5 px-4 text-center" data-i18n="colAbsent">غائبات</th>
+                                <th class="py-3.5 px-4 text-center" data-i18n="colExcused">بعذر / متأخرات</th>
+                                <th class="py-3.5 px-4 text-start" data-i18n="colRate">نسبة الحضور</th>
+                                <th class="py-3.5 px-4 text-center" data-i18n="colDetails">التفاصيل</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recordsTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- 7. FEMALE TRAINEES LISTS & QR ID CARD PREVIEW -->
+        <!-- ===================================================================== -->
+        <section id="view-students" class="view-section hidden space-y-6">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-navy-900" data-i18n="studentsTitle">قوائم المتدربات والبطاقات الرقمية</h2>
+                    <p class="text-sm text-slate-500" data-i18n="studentsSubtitle">إدارة حضور المتدربات يدوياً وعرض بطاقة الهوية QR لكل متدربة</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <select id="studentsCourseSelect" onchange="selectCourseById(this.value)" class="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-bold text-navy-900 focus:outline-none focus:border-navy-700">
+                    </select>
+                    <button onclick="openAddStudentModal()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-700 text-white text-sm font-bold shadow-xs transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span data-i18n="addStudentBtn">إضافة متدربة</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Roster Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-start border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase">
+                                <th class="py-3.5 px-4 text-start" data-i18n="colStudentId">الرقم التدريبي</th>
+                                <th class="py-3.5 px-4 text-start" data-i18n="colTraineeName">اسم المتدربة</th>
+                                <th class="py-3.5 px-4 text-center" data-i18n="colAttendancePct">نسبة الحضور الفصلية</th>
+                                <th class="py-3.5 px-4 text-center" data-i18n="colQrCard">بطاقة QR</th>
+                                <th class="py-3.5 px-4 text-center" data-i18n="colCurrentStatus">الحالة الحالية</th>
+                                <th class="py-3.5 px-4 text-center" data-i18n="colManualToggle">تحديث الحالة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody" class="divide-y divide-slate-100 text-sm">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===================================================================== -->
+        <!-- 8. ATTENDANCE REPORTS & CSV / EXCEL EXPORT -->
+        <!-- ===================================================================== -->
+        <section id="view-reports" class="view-section hidden space-y-6 print-full">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                    <h2 class="text-2xl font-extrabold text-navy-900" data-i18n="reportsTitle">تقارير وتحليلات الحضور</h2>
+                    <p class="text-sm text-slate-500" data-i18n="reportsSubtitle">إحصاءات الحضور والغياب حسب المقرر والشعبة والتاريخ مع التصدير المباشر</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 no-print">
+                    <button onclick="exportReportCSV()" class="px-4 py-2.5 rounded-xl bg-white hover:bg-slate-50 text-navy-900 border border-slate-300 text-xs sm:text-sm font-bold transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4 text-navy-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                        <span data-i18n="exportCsvBtn">تصدير CSV</span>
+                    </button>
+                    <button onclick="exportReportExcel()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        <span data-i18n="exportExcelBtn">تصدير Excel</span>
+                    </button>
+                    <button onclick="window.print()" class="px-4 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-700 text-white text-xs sm:text-sm font-bold transition flex items-center gap-1.5">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                        <span data-i18n="printReportBtn">طباعة</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500" data-i18n="kpiAvgAttendance">متوسط الحضور العام</p>
+                    <div class="flex items-end justify-between mt-2">
+                        <p id="kpiAvgValue" class="text-3xl font-extrabold text-navy-900">91.5%</p>
+                        <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold">+2.1%</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500" data-i18n="kpiTotalSessions">إجمالي المحاضرات المسجلة</p>
+                    <div class="flex items-end justify-between mt-2">
+                        <p id="kpiSessionsValue" class="text-3xl font-extrabold text-navy-900">6</p>
+                        <span class="text-xs text-slate-400" data-i18n="kpiThisSemester">هذا الفصل</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500" data-i18n="kpiTotalTrainees">إجمالي المتدربات</p>
+                    <div class="flex items-end justify-between mt-2">
+                        <p id="kpiTraineesValue" class="text-3xl font-extrabold text-navy-900">32</p>
+                        <span class="text-xs text-navy-700 font-semibold" data-i18n="kpiFourCourses">4 شعب</span>
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                    <p class="text-xs font-semibold text-slate-500" data-i18n="kpiLowAlerts">تنبيهات انخفاض الحضور (&lt;80%)</p>
+                    <div class="flex items-end justify-between mt-2">
+                        <p id="kpiAlertsValue" class="text-3xl font-extrabold text-rose-600">3</p>
+                        <span class="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold" data-i18n="kpiNeedsFollowup">يتطلب متابعة</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts & Section Breakdown -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Weekly Trend Chart -->
+                <div class="lg:col-span-7 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-base font-bold text-navy-900" data-i18n="weeklyTrendTitle">مؤشر الحضور الأسبوعي للمتدربات (%)</h3>
+                            <p class="text-xs text-slate-500" data-i18n="weeklyTrendSub">نسبة الالتزام بالحضور خلال الأسابيع التدريبية الستة</p>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-lg bg-navy-50 text-navy-800 text-xs font-bold">1448هـ</span>
+                    </div>
+
+                    <div id="weeklyBarChart" class="h-56 flex items-end justify-between gap-3 pt-6 px-2 border-b border-slate-200">
+                    </div>
+                </div>
+
+                <!-- Course & Section Comparison + Low Attendance Alerts -->
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                        <h3 class="text-base font-bold text-navy-900" data-i18n="courseCompTitle">نسب الحضور حسب المقرر والشعبة</h3>
+                        <div id="courseComparisonBars" class="space-y-3.5">
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl border border-rose-200/80 shadow-xs space-y-3">
+                        <div class="flex items-center gap-2 text-rose-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                            </svg>
+                            <h3 class="text-base font-bold" data-i18n="lowAlertsBoxTitle">تنبيهات انخفاض نسبة الحضور للمتدربات</h3>
+                        </div>
+                        <div id="lowAttendanceList" class="space-y-2 text-xs sm:text-sm">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 1: PRINTABLE / SCANNABLE SAMPLE TRAINEE QR ID CARDS -->
+    <!-- ===================================================================== -->
+    <div id="sampleCardsModal" class="fixed inset-0 z-50 hidden bg-navy-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
+            <div class="p-5 sm:p-6 border-b border-slate-200 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg sm:text-xl font-extrabold text-navy-900" data-i18n="sampleCardsModalTitle">بطاقات الهوية التدريبية المزودة برمز QR</h3>
+                    <p class="text-xs text-slate-500" data-i18n="sampleCardsModalSub">يمكنكِ توجيه الكاميرا نحو أي بطاقة لمسحها أو النقر على "مسح فوري" لمحاكاة القراءة</p>
+                </div>
+                <button onclick="closeSampleCardsModal()" class="p-2 rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="sampleCardsGrid" class="p-5 sm:p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 gap-4 bg-surface">
+                <!-- Populated with real QR canvases -->
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 2: ADD FEMALE TRAINEE MODAL -->
+    <!-- ===================================================================== -->
+    <div id="addStudentModal" class="fixed inset-0 z-50 hidden bg-navy-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-slate-200">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <h3 class="text-lg font-extrabold text-navy-900" data-i18n="modalAddStudentTitle">إضافة متدربة جديدة للشعبة</h3>
+                <button onclick="closeAddStudentModal()" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form onsubmit="handleAddStudentSubmit(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="modalStudentIdLabel">الرقم التدريبي</label>
+                    <input type="text" id="newStudentId" required placeholder="445240" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-english focus:outline-none focus:border-navy-700">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="modalStudentNameArLabel">اسم المتدربة (بالعربية)</label>
+                    <input type="text" id="newStudentNameAr" required placeholder="ريناد خالد السبيعي" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:border-navy-700">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1" data-i18n="modalStudentNameEnLabel">اسم المتدربة (بالإنجليزية)</label>
+                    <input type="text" id="newStudentNameEn" required placeholder="Renad Khalid Al-Subaie" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-english focus:outline-none focus:border-navy-700">
+                </div>
+                <div class="flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeAddStudentModal()" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-semibold hover:bg-slate-50" data-i18n="cancelBtn">إلغاء</button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl bg-navy-900 hover:bg-navy-700 text-white text-sm font-bold" data-i18n="saveStudentBtn">حفظ المتدربة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- MODAL 3: SESSION RECORD DETAILS MODAL -->
+    <!-- ===================================================================== -->
+    <div id="recordDetailsModal" class="fixed inset-0 z-50 hidden bg-navy-950/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                    <h3 id="recDetailTitle" class="text-lg font-extrabold text-navy-900">تفاصيل سجل المحاضرة</h3>
+                    <p id="recDetailMeta" class="text-xs text-slate-500">2026-11-12</p>
+                </div>
+                <button onclick="document.getElementById('recordDetailsModal').classList.add('hidden')" class="p-1.5 rounded-lg text-slate-400 hover:bg-slate-100">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <div id="recDetailBody" class="max-h-80 overflow-y-auto space-y-2 text-sm">
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Bottom Quick Navigation Bar -->
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-slate-200 z-40 px-1.5 py-1.5 flex items-center justify-around shadow-lg no-print">
+        <button onclick="navigateTo('dashboard')" data-nav="dashboard" class="bottom-nav-btn flex flex-col items-center p-1.5 rounded-xl text-[10px] font-semibold">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            <span data-i18n="navDashboardShort">لوحتي</span>
+        </button>
+        <button onclick="navigateTo('courses')" data-nav="courses" class="bottom-nav-btn flex flex-col items-center p-1.5 rounded-xl text-[10px] font-semibold">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+            <span data-i18n="navCoursesShort">المقررات</span>
+        </button>
+        <button onclick="navigateTo('scanner')" data-nav="scanner" class="bottom-nav-btn flex flex-col items-center p-1.5 rounded-xl text-[10px] font-semibold">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+            <span data-i18n="navScannerShort">المسح QR</span>
+        </button>
+        <button onclick="navigateTo('students')" data-nav="students" class="bottom-nav-btn flex flex-col items-center p-1.5 rounded-xl text-[10px] font-semibold">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span data-i18n="navStudentsShort">المتدربات</span>
+        </button>
+        <button onclick="navigateTo('reports')" data-nav="reports" class="bottom-nav-btn flex flex-col items-center p-1.5 rounded-xl text-[10px] font-semibold">
+            <svg class="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <span data-i18n="navReportsShort">التقارير</span>
+        </button>
+    </nav>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-5 px-4 mt-12 mb-14 lg:mb-0 no-print">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+            <p class="font-bold text-navy-900">WATHIQ | وَثِق — <span data-i18n="footerRights">نظام إدارة حضور المتدربات عبر بطاقات QR</span></p>
+            <p data-i18n="footerProtoNote">نموذج أولي لمسابقة الابتكار والاختراع • غير مرتبط بنظام رايات (TVTC Rayat)</p>
+        </div>
+    </footer>
+
+    <!-- ===================================================================== -->
+    <!-- APPLICATION LOGIC, CAMERA QR SCANNER & PERSISTENT STATE -->
+    <!-- ===================================================================== -->
+    <script>
+        const STORAGE_KEY = 'WATHIQ_PROTOTYPE_V2_DATA';
+
+        // 1. BILINGUAL DICTIONARY (ARABIC DEFAULT + ENGLISH)
+        const i18n = {
+            ar: {
+                protoBadge: "نموذج مسابقة الابتكار • PROTOTYPE",
+                protoNotice: "نموذج أولي لمسابقة الابتكار والاختراع — بيانات تجريبية افتراضية، وغير مرتبط رسمياً بنظام رايات (TVTC Rayat).",
+                resetDemoBtn: "إعادة ضبط البيانات التجريبية",
+                brandTagline: "تحضير المتدربات عبر بطاقات QR الذكية",
+                navHome: "الرئيسية",
+                navDashboard: "لوحة المدربة",
+                navCourses: "المقررات والشعب",
+                navScanner: "مسح بطاقات QR",
+                navRecords: "سجلات الحضور",
+                navStudents: "قوائم المتدربات",
+                navReports: "التقارير",
+                navLogin: "دخول المدربة",
+                navLogout: "خروج",
+                navDashboardShort: "لوحتي",
+                navCoursesShort: "المقررات",
+                navScannerShort: "المسح QR",
+                navStudentsShort: "المتدربات",
+                navReportsShort: "التقارير",
+                welcomeDrNouraShort: "أهلاً بكِ د. نورة",
+                welcomeDrNouraHeading: "أهلاً بكِ، د. نورة",
+                instructorRank: "محاضرة أولى",
+                instructorFullNameTitle: "د. نورة بنت سعد العتيبي • قسم التقنية الإدارية",
+                empIdLabel: "الرقم الوظيفي:",
+                emailLabel: "البريد:",
+                officeLabel: "المكتب:",
+                officeValue: "مبنى أ - الدور الثاني - مكتب 214",
+                deptLabel: "قسم التقنية الإدارية — الكلية التقنية للبنات",
+                activeCourseLabel: "المقرر المحدد:",
+                heroPill: "نظام تحضير المتدربات الذكي عبر بطاقات QR",
+                heroTitleMain: "تحضير دقيق وموثوق للمتدربات في ثوانٍ مع",
+                heroSubtitle: "منصة إدارية متكاملة مصممة لعضوات هيئة التدريب في الكليات التقنية لتسجيل حضور المتدربات عبر مسح بطاقات الهوية الجامعية المزودة برمز QR باستخدام كاميرا الجهاز، مع منع التكرار وتوليد التقارير الفورية.",
+                disclaimerTitle: "نموذج أولي لمسابقة الابتكار والاختراع:",
+                disclaimerBody: "يعتمد هذا النظام على بيانات تجريبية افتراضية بالكامل لعرض فكرة المشروع وسير العمل، ولا يرتبط رسمياً أو تقنياً بنظام (رايات) التابع للمؤسسة العامة للتدريب التقني والمهني (TVTC).",
+                ctaDemoDrNoura: "دخول لوحة د. نورة (Demo)",
+                ctaLoginPage: "صفحة تسجيل الدخول",
+                heroCardHeader: "بطاقة المتدربة الرقمية QR",
+                traineeCardRole: "متدربة — الكلية التقنية",
+                sampleTraineeName: "سارة أحمد",
+                sampleCourseHero: "إدارة الجودة الشاملة • شعبة 101",
+                verifiedBadge: "تم التحقق ✓",
+                statScanTime: "سرعة المسح",
+                statDuplicate: "تكرار الحضور",
+                statExport: "تصدير فوري",
+                workflowHeading: "آلية عمل نظام وَثِق في القاعة التدريبية",
+                workflowSubheading: "خطوات عملية تحاكي سير العمل اليومي للمدربة أثناء المحاضرة",
+                step1Title: "اختيار المقرر والشعبة",
+                step1Desc: "تستعرض المدربة جدول محاضرات اليوم وتختار المقرر والشعبة المطلوب تحضيرها.",
+                step2Title: "تشغيل جلسة المسح",
+                step2Desc: "فتح كاميرا الجهاز لمسح بطاقات الهوية المزودة برمز QR الخاصة بالمتدربات.",
+                step3Title: "التحقق ومنع التكرار",
+                step3Desc: "يتعرف النظام تلقائياً على اسم المتدربة ورقمها التدريبي ويمنع تسجيلها مرتين.",
+                step4Title: "إنهاء الجلسة والتقارير",
+                step4Desc: "اعتماد الغياب تلقائياً عند إنهاء المحاضرة وتصدير التقارير بصيغة CSV أو Excel.",
+                loginTitle: "بوابة دخول عضوات هيئة التدريب",
+                loginSubtitle: "سجّلي الدخول للوصول إلى جدول المحاضرات وإدارة تحضير المتدربات",
+                loginIdLabel: "الرقم التدريبي للمدربة أو البريد الإلكتروني",
+                loginPassLabel: "كلمة المرور",
+                loginSubmitBtn: "تسجيل الدخول",
+                orDivider: "أو الدخول بحساب العرض التجريبي",
+                demoLoginDrNouraBtn: "دخول سريع: د. نورة العتيبي (Dr. Noura)",
+                viewSampleIdCardsBtn: "بطاقات QR التجريبية للمتدربات",
+                quickStartScanBtn: "بدء مسح الحضور الآن",
+                dashKpiCourses: "المقررات المسندة",
+                dashKpiSectionsSub: "4 شعب تدريبية نشطة",
+                dashKpiTrainees: "إجمالي المتدربات",
+                dashKpiTraineesSub: "مسجلات في كافة الشعب",
+                dashKpiTodayLectures: "محاضرات اليوم",
+                dashKpiActiveNow: "1 جارية الآن • 2 قادمة",
+                dashKpiAttendanceRate: "نسبة الحضور العامة",
+                dashKpiTermLabel: "الفصل التدريبي الأول",
+                todayScheduleTitle: "جدول محاضرات اليوم",
+                todayScheduleSub: "الخميس • 12 نوفمبر 2026 — انقري على المحاضرة لبدء جلسة التحضير",
+                lecturesCountBadge: "3 محاضرات",
+                assignedCoursesBoxTitle: "المقررات والشعب المسندة",
+                assignedCoursesBoxSub: "وصول سريع للقوائم والتقارير",
+                viewAllBtn: "عرض الكل",
+                lectureStatusLive: "جارية الآن",
+                lectureStatusUpcoming: "قادمة",
+                lectureStatusDone: "مكتملة",
+                startAttendanceBtn: "بدء التحضير",
+                coursesTitle: "المقررات التدريبية والشعب",
+                coursesSubtitle: "اختاري المقرر والشعبة لبدء جلسة التحضير عبر بطاقات QR أو استعراض قائمة المتدربات",
+                termLabel: "الفصل التدريبي:",
+                termValue: "الأول 1448هـ / 2026",
+                startQrBtn: "جلسة مسح QR",
+                manageRosterBtn: "قائمة المتدربات",
+                traineesCountUnit: "متدربة",
+                sectionWord: "شعبة",
+                sessionLiveStatus: "جلسة تحضير نشطة",
+                sampleCardsShortBtn: "بطاقات QR",
+                endSessionBtn: "إنهاء الجلسة وحفظ السجل",
+                cameraScannerTag: "ماسح بطاقات الهوية QR",
+                scanTraineeCardHeading: "مسح بطاقة المتدربة بالكاميرا",
+                startCameraBtn: "تشغيل الكاميرا",
+                stopCameraBtn: "إيقاف الكاميرا",
+                cameraPlaceholderHint: "اضغطي على \"تشغيل الكاميرا\" لمسح رمز QR على بطاقة المتدربة، أو استخدمي محاكي المسح أدناه.",
+                lastScanSuccessTitle: "تم التعرف على المتدربة وتسجيل حضورها:",
+                simSelectTraineeLabel: "محاكاة تمرير بطاقة متدربة (أو إدخال الرقم التدريبي):",
+                scanCardActionBtn: "تسجيل البطاقة",
+                countPresentLabel: "حاضرة",
+                countAbsentLabel: "غائبة / بانتظار المسح",
+                countRateLabel: "نسبة الحضور",
+                liveRosterHeading: "قائمة المتدربات في الجلسة (تحديث فوري)",
+                duplicateGuardBadge: "حماية منع التكرار مفعّلة",
+                colStudentId: "الرقم التدريبي",
+                colTraineeName: "اسم المتدربة",
+                colScanTime: "وقت المسح",
+                colStatus: "الحالة",
+                recordsTitle: "سجلات الحضور والمحاضرات",
+                recordsSubtitle: "استعراض كافة الجلسات المعتمدة وتفاصيل حضور المتدربات حسب التاريخ والمقرر والشعبة",
+                filterAllCourses: "جميع المقررات التدريبية",
+                colDate: "التاريخ",
+                colCourse: "المقرر والشعبة",
+                colPresent: "حاضرات",
+                colAbsent: "غائبات",
+                colExcused: "بعذر / متأخرات",
+                colRate: "نسبة الحضور",
+                colDetails: "التفاصيل",
+                viewDetailsBtn: "عرض الكشف",
+                studentsTitle: "قوائم المتدربات والبطاقات الرقمية",
+                studentsSubtitle: "إدارة حضور المتدربات يدوياً وعرض بطاقة الهوية QR لكل متدربة",
+                addStudentBtn: "إضافة متدربة",
+                colAttendancePct: "نسبة الحضور الفصلية",
+                colQrCard: "بطاقة QR",
+                colCurrentStatus: "الحالة الحالية",
+                colManualToggle: "تحديث الحالة",
+                statusPresent: "حاضرة",
+                statusAbsent: "غائبة",
+                statusLate: "متأخرة",
+                statusExcused: "بعذر",
+                reportsTitle: "تقارير وتحليلات الحضور",
+                reportsSubtitle: "إحصاءات الحضور والغياب حسب المقرر والشعبة والتاريخ مع التصدير المباشر",
+                exportCsvBtn: "تصدير CSV",
+                exportExcelBtn: "تصدير Excel",
+                printReportBtn: "طباعة",
+                kpiAvgAttendance: "متوسط الحضور العام",
+                kpiTotalSessions: "إجمالي المحاضرات المسجلة",
+                kpiThisSemester: "هذا الفصل",
+                kpiTotalTrainees: "إجمالي المتدربات",
+                kpiFourCourses: "4 شعب",
+                kpiLowAlerts: "تنبيهات انخفاض الحضور (<80%)",
+                kpiNeedsFollowup: "يتطلب متابعة",
+                weeklyTrendTitle: "مؤشر الحضور الأسبوعي للمتدربات (%)",
+                weeklyTrendSub: "نسبة الالتزام بالحضور خلال الأسابيع التدريبية الستة",
+                courseCompTitle: "نسب الحضور حسب المقرر والشعبة",
+                lowAlertsBoxTitle: "تنبيهات انخفاض نسبة الحضور للمتدربات",
+                sampleCardsModalTitle: "بطاقات الهوية التدريبية المزودة برمز QR",
+                sampleCardsModalSub: "يمكنكِ توجيه الكاميرا نحو أي بطاقة لمسحها أو النقر على \"مسح فوري\" لمحاكاة القراءة",
+                modalAddStudentTitle: "إضافة متدربة جديدة للشعبة",
+                modalStudentIdLabel: "الرقم التدريبي",
+                modalStudentNameArLabel: "اسم المتدربة (بالعربية)",
+                modalStudentNameEnLabel: "اسم المتدربة (بالإنجليزية)",
+                cancelBtn: "إلغاء",
+                saveStudentBtn: "حفظ المتدربة",
+                footerRights: "نظام إدارة حضور المتدربات عبر بطاقات QR",
+                footerProtoNote: "نموذج أولي لمسابقة الابتكار والاختراع • غير مرتبط بنظام رايات (TVTC Rayat)"
+            },
+            en: {
+                protoBadge: "INNOVATION COMPETITION PROTOTYPE",
+                protoNotice: "Innovation & Invention Competition Prototype — Fictional demo data only, not officially connected to TVTC Rayat.",
+                resetDemoBtn: "Reset Demo Data",
+                brandTagline: "Female Trainee QR ID Attendance System",
+                navHome: "Home",
+                navDashboard: "Dashboard",
+                navCourses: "Courses & Sections",
+                navScanner: "QR ID Scanner",
+                navRecords: "Attendance Records",
+                navStudents: "Female Trainees",
+                navReports: "Reports",
+                navLogin: "Instructor Login",
+                navLogout: "Sign Out",
+                navDashboardShort: "Dashboard",
+                navCoursesShort: "Courses",
+                navScannerShort: "Scan QR",
+                navStudentsShort: "Trainees",
+                navReportsShort: "Reports",
+                welcomeDrNouraShort: "Welcome, Dr. Noura",
+                welcomeDrNouraHeading: "Welcome, Dr. Noura",
+                instructorRank: "Senior Lecturer",
+                instructorFullNameTitle: "Dr. Noura Saad Al-Otaibi • Administrative Technology Dept.",
+                empIdLabel: "Faculty ID:",
+                emailLabel: "Email:",
+                officeLabel: "Office:",
+                officeValue: "Building A - 2nd Floor - Office 214",
+                deptLabel: "Administrative Technology Dept. — Technical College for Girls",
+                activeCourseLabel: "Selected Course:",
+                heroPill: "Smart Female Trainee QR ID Attendance",
+                heroTitleMain: "Accurate & Verified Trainee Attendance in Seconds with",
+                heroSubtitle: "An integrated administrative web platform designed for female college instructors to record female trainees' attendance by scanning QR code ID cards via device camera, preventing duplicates and generating instant reports.",
+                disclaimerTitle: "Innovation & Invention Competition Prototype:",
+                disclaimerBody: "This prototype uses 100% fictional demo data to demonstrate workflow and innovation concepts, and is not officially connected to the TVTC Rayat system.",
+                ctaDemoDrNoura: "Enter Dr. Noura's Dashboard (Demo)",
+                ctaLoginPage: "Instructor Login Page",
+                heroCardHeader: "DIGITAL TRAINEE QR ID CARD",
+                traineeCardRole: "Female Trainee — Technical College",
+                sampleTraineeName: "Sara Ahmed",
+                sampleCourseHero: "Total Quality Management • Sec 101",
+                verifiedBadge: "Verified ✓",
+                statScanTime: "Scan Speed",
+                statDuplicate: "Duplicate Scans",
+                statExport: "Instant Export",
+                workflowHeading: "Classroom Attendance Workflow",
+                workflowSubheading: "Streamlined steps mirroring a female instructor's daily lecture routine",
+                step1Title: "Select Course & Section",
+                step1Desc: "Review today's lecture timetable and pick the active course and section.",
+                step2Title: "Start QR ID Scan Session",
+                step2Desc: "Activate the device camera to scan female trainees' QR code ID cards.",
+                step3Title: "Auto-Identify & Prevent Duplicates",
+                step3Desc: "Instantly recognizes the trainee and blocks duplicate check-ins in the same lecture.",
+                step4Title: "End Session & Export Reports",
+                step4Desc: "Finalize attendance records and download CSV or Excel reports with one click.",
+                loginTitle: "Female Instructor Portal Login",
+                loginSubtitle: "Sign in to access your lecture schedule and trainee QR attendance",
+                loginIdLabel: "Instructor ID or Academic Email",
+                loginPassLabel: "Password",
+                loginSubmitBtn: "Sign In",
+                orDivider: "Or enter via competition demo account",
+                demoLoginDrNouraBtn: "Quick Demo Login: Dr. Noura Al-Otaibi",
+                viewSampleIdCardsBtn: "Sample Trainee QR ID Cards",
+                quickStartScanBtn: "Start QR Attendance Now",
+                dashKpiCourses: "Assigned Courses",
+                dashKpiSectionsSub: "4 Active Class Sections",
+                dashKpiTrainees: "Total Female Trainees",
+                dashKpiTraineesSub: "Enrolled across sections",
+                dashKpiTodayLectures: "Today's Lectures",
+                dashKpiActiveNow: "1 Live Now • 2 Upcoming",
+                dashKpiAttendanceRate: "Overall Attendance Rate",
+                dashKpiTermLabel: "First Training Term",
+                todayScheduleTitle: "Today's Lecture Schedule",
+                todayScheduleSub: "Thursday • Nov 12, 2026 — Click a lecture to launch attendance",
+                lecturesCountBadge: "3 Lectures",
+                assignedCoursesBoxTitle: "Assigned Courses & Sections",
+                assignedCoursesBoxSub: "Quick access to rosters & reports",
+                viewAllBtn: "View All",
+                lectureStatusLive: "Live Now",
+                lectureStatusUpcoming: "Upcoming",
+                lectureStatusDone: "Completed",
+                startAttendanceBtn: "Start Attendance",
+                coursesTitle: "Assigned Courses & Class Sections",
+                coursesSubtitle: "Choose a course and section to start QR ID scanning or view the female trainee roster",
+                termLabel: "Training Term:",
+                termValue: "Term 1 • 1448H / 2026",
+                startQrBtn: "QR Scan Session",
+                manageRosterBtn: "Trainee Roster",
+                traineesCountUnit: "Trainees",
+                sectionWord: "Sec",
+                sessionLiveStatus: "Active Attendance Session",
+                sampleCardsShortBtn: "QR ID Cards",
+                endSessionBtn: "End Session & Save Record",
+                cameraScannerTag: "QR ID CARD SCANNER",
+                scanTraineeCardHeading: "Scan Trainee QR Card via Camera",
+                startCameraBtn: "Start Camera",
+                stopCameraBtn: "Stop Camera",
+                cameraPlaceholderHint: "Click \"Start Camera\" to scan a trainee's QR ID card, or use the quick card simulator below.",
+                lastScanSuccessTitle: "Trainee Identified & Marked Present:",
+                simSelectTraineeLabel: "Simulate scanning a trainee's QR card (or enter ID):",
+                scanCardActionBtn: "Record Scan",
+                countPresentLabel: "Present",
+                countAbsentLabel: "Absent / Pending",
+                countRateLabel: "Attendance Rate",
+                liveRosterHeading: "Live Lecture Roster (Instant Update)",
+                duplicateGuardBadge: "Duplicate Guard Active",
+                colStudentId: "Trainee ID",
+                colTraineeName: "Trainee Name",
+                colScanTime: "Scan Time",
+                colStatus: "Status",
+                recordsTitle: "Attendance Session Records",
+                recordsSubtitle: "Browse saved lecture sessions filtered by date, course, and section",
+                filterAllCourses: "All Courses & Sections",
+                colDate: "Date",
+                colCourse: "Course & Section",
+                colPresent: "Present",
+                colAbsent: "Absent",
+                colExcused: "Excused / Late",
+                colRate: "Attendance Rate",
+                colDetails: "Details",
+                viewDetailsBtn: "Inspect",
+                studentsTitle: "Female Trainee Lists & Digital QR Cards",
+                studentsSubtitle: "Manually update attendance statuses or preview each trainee's scannable QR ID card",
+                addStudentBtn: "Add Trainee",
+                colAttendancePct: "Semester Rate",
+                colQrCard: "QR ID Card",
+                colCurrentStatus: "Session Status",
+                colManualToggle: "Manual Update",
+                statusPresent: "Present",
+                statusAbsent: "Absent",
+                statusLate: "Late",
+                statusExcused: "Excused",
+                reportsTitle: "Attendance Reports & Analytics",
+                reportsSubtitle: "Course, section, and date-based attendance breakdown with CSV & Excel export",
+                exportCsvBtn: "Export CSV",
+                exportExcelBtn: "Export Excel",
+                printReportBtn: "Print",
+                kpiAvgAttendance: "Overall Avg. Attendance",
+                kpiTotalSessions: "Total Recorded Lectures",
+                kpiThisSemester: "This Semester",
+                kpiTotalTrainees: "Total Female Trainees",
+                kpiFourCourses: "4 Sections",
+                kpiLowAlerts: "Low Attendance Alerts (<80%)",
+                kpiNeedsFollowup: "Needs Follow-up",
+                weeklyTrendTitle: "Weekly Trainee Attendance Trend (%)",
+                weeklyTrendSub: "Attendance rate across the past 6 training weeks",
+                courseCompTitle: "Attendance Rate by Course & Section",
+                lowAlertsBoxTitle: "Low Attendance Threshold Alerts",
+                sampleCardsModalTitle: "Sample Female Trainee QR ID Cards",
+                sampleCardsModalSub: "Point your device camera at any QR code below or click \"Instant Scan\" to test check-in",
+                modalAddStudentTitle: "Add New Female Trainee to Section",
+                modalStudentIdLabel: "Trainee ID",
+                modalStudentNameArLabel: "Trainee Name (Arabic)",
+                modalStudentNameEnLabel: "Trainee Name (English)",
+                cancelBtn: "Cancel",
+                saveStudentBtn: "Save Trainee",
+                footerRights: "Female Trainee QR ID Attendance Management System",
+                footerProtoNote: "Innovation Competition Prototype • Not connected to TVTC Rayat"
+            }
+        };
+
+        // 2. DEFAULT INITIAL DATA (100% FEMALE TRAINEES & FEMALE INSTRUCTOR DR. NOURA)
+        function getDefaultData() {
+            return {
+                lang: 'ar',
+                currentView: 'home',
+                isLoggedIn: false,
+                selectedCourseId: 'TQM204',
+                instructor: {
+                    nameAr: 'د. نورة بنت سعد العتيبي',
+                    nameEn: 'Dr. Noura Saad Al-Otaibi',
+                    id: 'FAC-4410',
+                    email: 'n.alotaibi@wathiq-demo.edu.sa'
+                },
+                todayLectures: [
+                    {
+                        id: 'LEC-1',
+                        courseId: 'TQM204',
+                        timeAr: '08:00 ص - 09:50 ص',
+                        timeEn: '08:00 AM - 09:50 AM',
+                        roomAr: 'قاعة 204',
+                        roomEn: 'Hall 204',
+                        status: 'live'
+                    },
+                    {
+                        id: 'LEC-2',
+                        courseId: 'ENG105',
+                        timeAr: '10:00 ص - 11:50 ص',
+                        timeEn: '10:00 AM - 11:50 AM',
+                        roomAr: 'معمل 108',
+                        roomEn: 'Lab 108',
+                        status: 'upcoming'
+                    },
+                    {
+                        id: 'LEC-3',
+                        courseId: 'STAT210',
+                        timeAr: '12:30 م - 02:10 م',
+                        timeEn: '12:30 PM - 02:10 PM',
+                        roomAr: 'قاعة 301',
+                        roomEn: 'Hall 301',
+                        status: 'upcoming'
+                    }
+                ],
+                courses: [
+                    {
+                        id: 'TQM204',
+                        code: 'TQM 204',
+                        section: '101',
+                        nameAr: 'إدارة الجودة الشاملة',
+                        nameEn: 'Total Quality Management',
+                        scheduleAr: 'الأحد، الخميس • 08:00 ص - 09:50 ص • قاعة 204',
+                        scheduleEn: 'Sun, Thu • 08:00 AM - 09:50 AM • Hall 204',
+                        avgRate: 93,
+                        students: [
+                            { id: '445201', nameAr: 'سارة أحمد', nameEn: 'Sara Ahmed', semesterPct: 96, status: 'present', scanTime: '08:02:14' },
+                            { id: '445202', nameAr: 'نورة محمد', nameEn: 'Noura Mohammed', semesterPct: 94, status: 'present', scanTime: '08:03:05' },
+                            { id: '445203', nameAr: 'ريم عبدالله', nameEn: 'Reem Abdullah', semesterPct: 91, status: 'absent', scanTime: '-' },
+                            { id: '445204', nameAr: 'جود خالد', nameEn: 'Joud Khalid', semesterPct: 89, status: 'absent', scanTime: '-' },
+                            { id: '445205', nameAr: 'لمى علي', nameEn: 'Lama Ali', semesterPct: 95, status: 'present', scanTime: '08:04:41' },
+                            { id: '445206', nameAr: 'حصة صالح', nameEn: 'Hessa Saleh', semesterPct: 76, status: 'absent', scanTime: '-' },
+                            { id: '445207', nameAr: 'عبير حسن', nameEn: 'Abeer Hassan', semesterPct: 92, status: 'late', scanTime: '08:16:20' },
+                            { id: '445208', nameAr: 'روان فهد', nameEn: 'Rawan Fahad', semesterPct: 90, status: 'excused', scanTime: '-' }
+                        ]
+                    },
+                    {
+                        id: 'ENG105',
+                        code: 'ENG 105',
+                        section: '204',
+                        nameAr: 'الكتابة الفنية والتقارير',
+                        nameEn: 'Technical Report Writing',
+                        scheduleAr: 'الاثنين، الخميس • 10:00 ص - 11:50 ص • معمل 108',
+                        scheduleEn: 'Mon, Thu • 10:00 AM - 11:50 AM • Lab 108',
+                        avgRate: 89,
+                        students: [
+                            { id: '445209', nameAr: 'شهد عبدالعزيز', nameEn: 'Shahad Abdulaziz', semesterPct: 95, status: 'absent', scanTime: '-' },
+                            { id: '445210', nameAr: 'غادة إبراهيم', nameEn: 'Ghada Ibrahim', semesterPct: 91, status: 'absent', scanTime: '-' },
+                            { id: '445211', nameAr: 'مرام ناصر', nameEn: 'Maram Nasser', semesterPct: 75, status: 'absent', scanTime: '-' },
+                            { id: '445212', nameAr: 'الهنوف سعد', nameEn: 'Alhanouf Saad', semesterPct: 88, status: 'absent', scanTime: '-' },
+                            { id: '445213', nameAr: 'دانة تركي', nameEn: 'Dana Turki', semesterPct: 93, status: 'absent', scanTime: '-' },
+                            { id: '445214', nameAr: 'أمل سليمان', nameEn: 'Amal Sulaiman', semesterPct: 90, status: 'absent', scanTime: '-' },
+                            { id: '445215', nameAr: 'بشرى ماجد', nameEn: 'Bushra Majed', semesterPct: 87, status: 'absent', scanTime: '-' },
+                            { id: '445216', nameAr: 'وجدان بندر', nameEn: 'Wijdan Bandar', semesterPct: 92, status: 'absent', scanTime: '-' }
+                        ]
+                    },
+                    {
+                        id: 'STAT210',
+                        code: 'STAT 210',
+                        section: '302',
+                        nameAr: 'الإحصاء التطبيقي للأعمال',
+                        nameEn: 'Business Statistics',
+                        scheduleAr: 'الثلاثاء، الخميس • 12:30 م - 02:10 م • قاعة 301',
+                        scheduleEn: 'Tue, Thu • 12:30 PM - 02:10 PM • Hall 301',
+                        avgRate: 91,
+                        students: [
+                            { id: '445217', nameAr: 'ملاك فيصل', nameEn: 'Malak Faisal', semesterPct: 97, status: 'absent', scanTime: '-' },
+                            { id: '445218', nameAr: 'رغد سلطان', nameEn: 'Raghad Sultan', semesterPct: 90, status: 'absent', scanTime: '-' },
+                            { id: '445219', nameAr: 'ليان طارق', nameEn: 'Layan Tariq', semesterPct: 78, status: 'absent', scanTime: '-' },
+                            { id: '445220', nameAr: 'نوف عمر', nameEn: 'Nouf Omar', semesterPct: 94, status: 'absent', scanTime: '-' },
+                            { id: '445221', nameAr: 'سديم عادل', nameEn: 'Sadeem Adel', semesterPct: 89, status: 'absent', scanTime: '-' },
+                            { id: '445222', nameAr: 'العنود حمد', nameEn: 'Alanoud Hamad', semesterPct: 92, status: 'absent', scanTime: '-' },
+                            { id: '445223', nameAr: 'أسماء بدر', nameEn: 'Asma Badr', semesterPct: 86, status: 'absent', scanTime: '-' },
+                            { id: '445224', nameAr: 'ديما يوسف', nameEn: 'Deema Yousef', semesterPct: 95, status: 'absent', scanTime: '-' }
+                        ]
+                    },
+                    {
+                        id: 'MGT220',
+                        code: 'MGT 220',
+                        section: '105',
+                        nameAr: 'السلوك التنظيمي',
+                        nameEn: 'Organizational Behavior',
+                        scheduleAr: 'الأربعاء • 09:00 ص - 11:50 ص • قاعة 112',
+                        scheduleEn: 'Wed • 09:00 AM - 11:50 AM • Hall 112',
+                        avgRate: 94,
+                        students: [
+                            { id: '445225', nameAr: 'فرح منصور', nameEn: 'Farah Mansour', semesterPct: 98, status: 'present', scanTime: '09:01:30' },
+                            { id: '445226', nameAr: 'يارا وليد', nameEn: 'Yara Waleed', semesterPct: 95, status: 'present', scanTime: '09:02:10' },
+                            { id: '445227', nameAr: 'تالا مشعل', nameEn: 'Tala Mishal', semesterPct: 92, status: 'present', scanTime: '09:03:45' },
+                            { id: '445228', nameAr: 'لطيفة راشد', nameEn: 'Latifa Rashid', semesterPct: 94, status: 'present', scanTime: '09:04:12' },
+                            { id: '445229', nameAr: 'ميعاد سامي', nameEn: 'Miaad Sami', semesterPct: 91, status: 'excused', scanTime: '-' },
+                            { id: '445230', nameAr: 'شوق متعب', nameEn: 'Shouq Miteb', semesterPct: 96, status: 'present', scanTime: '09:05:00' },
+                            { id: '445231', nameAr: 'جنى نايف', nameEn: 'Jana Naif', semesterPct: 89, status: 'present', scanTime: '09:06:18' },
+                            { id: '445232', nameAr: 'هيفاء عيسى', nameEn: 'Haifa Essa', semesterPct: 93, status: 'present', scanTime: '09:07:02' }
+                        ]
+                    }
+                ],
+                records: [
+                    {
+                        id: 'REC-101',
+                        date: '2026-11-11',
+                        courseId: 'MGT220',
+                        present: 7,
+                        absent: 0,
+                        excused: 1,
+                        total: 8,
+                        attendees: ['فرح منصور (445225)', 'يارا وليد (445226)', 'تالا مشعل (445227)', 'لطيفة راشد (445228)', 'شوق متعب (445230)', 'جنى نايف (445231)', 'هيفاء عيسى (445232)']
+                    },
+                    {
+                        id: 'REC-102',
+                        date: '2026-11-10',
+                        courseId: 'ENG105',
+                        present: 7,
+                        absent: 1,
+                        excused: 0,
+                        total: 8,
+                        attendees: ['شهد عبدالعزيز (445209)', 'غادة إبراهيم (445210)', 'الهنوف سعد (445212)', 'دانة تركي (445213)', 'أمل سليمان (445214)', 'بشرى ماجد (445215)', 'وجدان بندر (445216)']
+                    },
+                    {
+                        id: 'REC-103',
+                        date: '2026-11-09',
+                        courseId: 'STAT210',
+                        present: 7,
+                        absent: 1,
+                        excused: 0,
+                        total: 8,
+                        attendees: ['ملاك فيصل (445217)', 'رغد سلطان (445218)', 'نوف عمر (445220)', 'سديم عادل (445221)', 'العنود حمد (445222)', 'أسماء بدر (445223)', 'ديما يوسف (445224)']
+                    },
+                    {
+                        id: 'REC-104',
+                        date: '2026-11-08',
+                        courseId: 'TQM204',
+                        present: 7,
+                        absent: 1,
+                        excused: 0,
+                        total: 8,
+                        attendees: ['سارة أحمد (445201)', 'نورة محمد (445202)', 'ريم عبدالله (445203)', 'جود خالد (445204)', 'لمى علي (445205)', 'عبير حسن (445207)', 'روان فهد (445208)']
+                    },
+                    {
+                        id: 'REC-105',
+                        date: '2026-11-05',
+                        courseId: 'TQM204',
+                        present: 6,
+                        absent: 1,
+                        excused: 1,
+                        total: 8,
+                        attendees: ['سارة أحمد (445201)', 'نورة محمد (445202)', 'ريم عبدالله (445203)', 'لمى علي (445205)', 'عبير حسن (445207)', 'روان فهد (445208)']
+                    },
+                    {
+                        id: 'REC-106',
+                        date: '2026-11-04',
+                        courseId: 'ENG105',
+                        present: 7,
+                        absent: 1,
+                        excused: 0,
+                        total: 8,
+                        attendees: ['شهد عبدالعزيز (445209)', 'غادة إبراهيم (445210)', 'الهنوف سعد (445212)', 'دانة تركي (445213)', 'أمل سليمان (445214)', 'بشرى ماجد (445215)', 'وجدان بندر (445216)']
+                    }
+                ],
+                weeklyTrend: [
+                    { weekAr: 'الأسبوع 1', weekEn: 'Week 1', rate: 89 },
+                    { weekAr: 'الأسبوع 2', weekEn: 'Week 2', rate: 91 },
+                    { weekAr: 'الأسبوع 3', weekEn: 'Week 3', rate: 88 },
+                    { weekAr: 'الأسبوع 4', weekEn: 'Week 4', rate: 93 },
+                    { weekAr: 'الأسبوع 5', weekEn: 'Week 5', rate: 94 },
+                    { weekAr: 'الأسبوع 6', weekEn: 'Week 6', rate: 92 }
+                ]
+            };
+        }
+
+        let state = loadState();
+        let html5QrScanner = null;
+        let isCameraRunning = false;
+        let lastScannedCode = '';
+        let lastScannedTimeMs = 0;
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    if (parsed && Array.isArray(parsed.courses) && parsed.courses.length > 0) {
+                        return parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn('Could not read localStorage state, using defaults.', e);
+            }
+            return getDefaultData();
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+            } catch (e) {
+                console.warn('Could not save state to localStorage.', e);
+            }
+        }
+
+        function resetDemoData() {
+            stopCameraScanner();
+            localStorage.removeItem(STORAGE_KEY);
+            const currentLang = state.lang;
+            state = getDefaultData();
+            state.lang = currentLang;
+            saveState();
+            applyLanguage(state.lang);
+            populateCourseSelectors();
+            renderAllViews();
+            showToast(
+                state.lang === 'ar'
+                    ? 'تمت إعادة ضبط كافة البيانات التجريبية بنجاح'
+                    : 'Demo data has been reset to defaults',
+                'info'
+            );
+        }
+
+        // 3. INITIALIZATION
+        window.onload = function() {
+            applyLanguage(state.lang);
+            if (state.isLoggedIn) {
+                document.getElementById('instructorContextBar').classList.remove('hidden');
+            }
+            populateCourseSelectors();
+            renderAllViews();
+            navigateTo(state.currentView || 'home', false);
+        };
+
+        // 4. BILINGUAL RTL / LTR SWITCHER
+        function toggleLanguage() {
+            state.lang = state.lang === 'ar' ? 'en' : 'ar';
+            saveState();
+            applyLanguage(state.lang);
+            populateCourseSelectors();
+            renderAllViews();
+            showToast(
+                state.lang === 'ar' ? 'تم التبديل إلى اللغة العربية (RTL)' : 'Switched to English (LTR)',
+                'info'
+            );
+        }
+
+        function applyLanguage(lang) {
+            const htmlEl = document.documentElement;
+            htmlEl.setAttribute('lang', lang);
+            htmlEl.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+
+            document.getElementById('langToggleLabel').textContent = lang === 'ar' ? 'English' : 'العربية';
+
+            const dict = i18n[lang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) {
+                    el.textContent = dict[key];
+                }
+            });
+
+            const searchInput = document.getElementById('recordsSearchInput');
+            if (searchInput) {
+                searchInput.placeholder = lang === 'ar'
+                    ? 'ابحثي باسم المقرر، الرمز، أو التاريخ...'
+                    : 'Search by course name, code, or date...';
+            }
+
+            updateHeaderAuthUI();
+        }
+
+        // 5. NAVIGATION & AUTHENTICATION
+        function navigateTo(viewId, shouldScroll = true) {
+            if (state.currentView === 'scanner' && viewId !== 'scanner' && isCameraRunning) {
+                stopCameraScanner();
+            }
+            state.currentView = viewId;
+            saveState();
+
+            document.querySelectorAll('.view-section').forEach(sec => sec.classList.add('hidden'));
+            const target = document.getElementById(`view-${viewId}`);
+            if (target) {
+                target.classList.remove('hidden');
+            }
+            updateNavHighlight();
+            renderAllViews();
+            if (shouldScroll) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        function updateNavHighlight() {
+            const active = state.currentView;
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                const isMatch = btn.getAttribute('data-nav') === active;
+                btn.className = isMatch
+                    ? 'nav-btn px-3 py-2 rounded-lg text-sm font-bold bg-navy-900 text-white transition'
+                    : 'nav-btn px-3 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-100 hover:text-navy-900 transition';
+            });
+
+            document.querySelectorAll('.bottom-nav-btn').forEach(btn => {
+                const isMatch = btn.getAttribute('data-nav') === active;
+                btn.className = isMatch
+                    ? 'bottom-nav-btn flex flex-col items-center p-1.5 rounded-xl text-[10px] font-bold text-navy-900 bg-navy-50'
+                    : 'bottom-nav-btn flex flex-col items-center p-1.5 rounded-xl text-[10px] font-semibold text-slate-500';
+            });
+        }
+
+        function toggleMobileMenu() {
+            document.getElementById('mobileMenu').classList.toggle('hidden');
+            document.getElementById('menuIconOpen').classList.toggle('hidden');
+            document.getElementById('menuIconClose').classList.toggle('hidden');
+        }
+
+        function handleLoginSubmit(e) {
+            e.preventDefault();
+            loginAsDrNoura();
+        }
+
+        function loginAsDrNoura() {
+            state.isLoggedIn = true;
+            saveState();
+            updateHeaderAuthUI();
+            document.getElementById('instructorContextBar').classList.remove('hidden');
+            showToast(
+                state.lang === 'ar'
+                    ? 'أهلاً بكِ د. نورة العتيبي — تم تسجيل الدخول بنجاح'
+                    : 'Welcome, Dr. Noura Al-Otaibi — Signed in successfully',
+                'success'
+            );
+            navigateTo('dashboard');
+        }
+
+        function handleHeaderAuthClick() {
+            if (state.isLoggedIn) {
+                stopCameraScanner();
+                state.isLoggedIn = false;
+                saveState();
+                updateHeaderAuthUI();
+                document.getElementById('instructorContextBar').classList.add('hidden');
+                showToast(
+                    state.lang === 'ar' ? 'تم تسجيل الخروج' : 'Signed out successfully',
+                    'info'
+                );
+                navigateTo('home');
+            } else {
+                navigateTo('login');
+            }
+        }
+
+        function updateHeaderAuthUI() {
+            const label = document.getElementById('headerAuthLabel');
+            const dict = i18n[state.lang];
+            label.textContent = state.isLoggedIn ? dict.navLogout : dict.navLogin;
+        }
+
+        // 6. COURSE SELECTION HELPERS
+        function getSelectedCourse() {
+            return state.courses.find(c => c.id === state.selectedCourseId) || state.courses[0];
+        }
+
+        function selectCourseById(courseId) {
+            state.selectedCourseId = courseId;
+            saveState();
+            populateCourseSelectors();
+            renderAllViews();
+        }
+
+        function populateCourseSelectors() {
+            const course = getSelectedCourse();
+            const dict = i18n[state.lang];
+
+            const activeBadge = document.getElementById('activeCourseBadge');
+            if (activeBadge) {
+                activeBadge.textContent = `${state.lang === 'ar' ? course.nameAr : course.nameEn} (${course.code} - ${dict.sectionWord} ${course.section})`;
+            }
+
+            ['scannerCourseSelect', 'studentsCourseSelect'].forEach(selId => {
+                const el = document.getElementById(selId);
+                if (!el) return;
+                el.innerHTML = state.courses.map(c => {
+                    const label = `${c.code} - ${state.lang === 'ar' ? c.nameAr : c.nameEn} (${dict.sectionWord} ${c.section})`;
+                    return `<option value="${c.id}" ${c.id === state.selectedCourseId ? 'selected' : ''}>${label}</option>`;
+                }).join('');
+            });
+
+            const recFilter = document.getElementById('recordsCourseFilter');
+            if (recFilter) {
+                const currentVal = recFilter.value || 'ALL';
+                recFilter.innerHTML = `<option value="ALL">${dict.filterAllCourses}</option>` +
+                    state.courses.map(c => {
+                        const label = `${c.code} - ${state.lang === 'ar' ? c.nameAr : c.nameEn} (${dict.sectionWord} ${c.section})`;
+                        return `<option value="${c.id}" ${c.id === currentVal ? 'selected' : ''}>${label}</option>`;
+                    }).join('');
+            }
+        }
+
+        function renderAllViews() {
+            renderInstructorDashboard();
+            renderCoursesDashboard();
+            renderScannerView();
+            renderAttendanceRecords();
+            renderStudentsRoster();
+            renderReportsView();
+        }
+
+        // 7. INSTRUCTOR DASHBOARD RENDERING
+        function renderInstructorDashboard() {
+            const dict = i18n[state.lang];
+            const totalTrainees = state.courses.reduce((acc, c) => acc + c.students.length, 0);
+            const avgRate = Math.round(state.courses.reduce((acc, c) => acc + c.avgRate, 0) / state.courses.length * 10) / 10;
+
+            const dashCoursesEl = document.getElementById('dashTotalCourses');
+            const dashTraineesEl = document.getElementById('dashTotalTrainees');
+            const dashRateEl = document.getElementById('dashAvgRate');
+
+            if (dashCoursesEl) dashCoursesEl.textContent = state.courses.length;
+            if (dashTraineesEl) dashTraineesEl.textContent = totalTrainees;
+            if (dashRateEl) dashRateEl.textContent = `${avgRate}%`;
+
+            // Today's Lecture Schedule
+            const lecList = document.getElementById('todayLecturesList');
+            if (lecList) {
+                lecList.innerHTML = state.todayLectures.map(lec => {
+                    const course = state.courses.find(c => c.id === lec.courseId) || state.courses[0];
+                    const courseName = state.lang === 'ar' ? course.nameAr : course.nameEn;
+                    const timeText = state.lang === 'ar' ? lec.timeAr : lec.timeEn;
+                    const roomText = state.lang === 'ar' ? lec.roomAr : lec.roomEn;
+
+                    const isLive = lec.status === 'live';
+                    const badgeCls = isLive
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-slate-100 text-slate-600 border-slate-200';
+                    const badgeLabel = isLive ? dict.lectureStatusLive : dict.lectureStatusUpcoming;
+
+                    return `
+                        <div class="p-4 rounded-2xl border ${isLive ? 'border-navy-300 bg-navy-50/40' : 'border-slate-200 bg-white'} flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div class="space-y-1">
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="px-2.5 py-0.5 rounded-lg bg-navy-900 text-white text-xs font-bold font-english">${course.code}</span>
+                                    <span class="text-xs font-bold text-navy-700">${dict.sectionWord} ${course.section}</span>
+                                    <span class="px-2.5 py-0.5 rounded-full border text-[11px] font-bold ${badgeCls}">${badgeLabel}</span>
+                                </div>
+                                <h4 class="font-extrabold text-navy-900 text-base">${courseName}</h4>
+                                <p class="text-xs text-slate-500">${timeText} • ${roomText}</p>
+                            </div>
+                            <button onclick="startLectureAttendance('${course.id}')" class="px-4 py-2.5 rounded-xl ${isLive ? 'bg-navy-900 hover:bg-navy-700 text-white' : 'bg-white hover:bg-navy-50 text-navy-900 border border-navy-200'} text-xs font-bold transition shrink-0">
+                                ${dict.startAttendanceBtn}
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            // Mini Assigned Courses List
+            const miniList = document.getElementById('dashboardCoursesMiniList');
+            if (miniList) {
+                miniList.innerHTML = state.courses.map(c => {
+                    const name = state.lang === 'ar' ? c.nameAr : c.nameEn;
+                    return `
+                        <div class="p-3.5 rounded-2xl border border-slate-200 hover:border-navy-300 transition flex items-center justify-between gap-3">
+                            <div>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="text-xs font-extrabold font-english text-navy-800">${c.code}</span>
+                                    <span class="text-[11px] text-slate-400">• ${dict.sectionWord} ${c.section}</span>
+                                </div>
+                                <p class="font-bold text-sm text-navy-900 mt-0.5">${name}</p>
+                                <p class="text-[11px] text-slate-500">${c.students.length} ${dict.traineesCountUnit}</p>
+                            </div>
+                            <div class="flex items-center gap-1.5">
+                                <button onclick="openCourseRoster('${c.id}')" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition">
+                                    ${dict.manageRosterBtn}
+                                </button>
+                                <button onclick="startLectureAttendance('${c.id}')" class="px-2.5 py-1.5 rounded-lg bg-navy-900 hover:bg-navy-700 text-white text-xs font-bold transition">
+                                    QR
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function startLectureAttendance(courseId) {
+            selectCourseById(courseId);
+            navigateTo('scanner');
+        }
+
+        // 8. COURSES & SECTIONS VIEW
+        function renderCoursesDashboard() {
+            const grid = document.getElementById('coursesGrid');
+            if (!grid) return;
+            const dict = i18n[state.lang];
+
+            grid.innerHTML = state.courses.map(course => {
+                const name = state.lang === 'ar' ? course.nameAr : course.nameEn;
+                const schedule = state.lang === 'ar' ? course.scheduleAr : course.scheduleEn;
+                const presentCount = course.students.filter(s => s.status === 'present' || s.status === 'late').length;
+
+                return `
+                    <div class="bg-white rounded-3xl border border-slate-200 p-6 shadow-xs hover:shadow-md hover:border-navy-300 transition flex flex-col justify-between space-y-5">
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-3 py-1 rounded-xl bg-navy-900 text-white text-xs font-extrabold font-english">${course.code}</span>
+                                    <span class="px-2.5 py-1 rounded-xl bg-navy-50 text-navy-800 border border-navy-100 text-xs font-bold">
+                                        ${dict.sectionWord} ${course.section}
+                                    </span>
+                                </div>
+                                <span class="text-xs font-bold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
+                                    ${course.students.length} ${dict.traineesCountUnit}
+                                </span>
+                            </div>
+
+                            <h3 class="text-xl font-extrabold text-navy-900">${name}</h3>
+                            <p class="text-xs sm:text-sm text-slate-500 flex items-center gap-1.5">
+                                <svg class="w-4 h-4 text-navy-700 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>${schedule}</span>
+                            </p>
+                        </div>
+
+                        <div class="space-y-4 pt-3 border-t border-slate-100">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="text-slate-500">${dict.colRate}:</span>
+                                <span class="font-bold text-navy-900">${course.avgRate}% (${presentCount}/${course.students.length} ${dict.statusPresent})</span>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-2.5">
+                                <button onclick="startLectureAttendance('${course.id}')" class="py-2.5 px-3 rounded-xl bg-navy-900 hover:bg-navy-700 text-white text-xs sm:text-sm font-bold transition flex items-center justify-center gap-1.5">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/>
+                                    </svg>
+                                    <span>${dict.startQrBtn}</span>
+                                </button>
+                                <button onclick="openCourseRoster('${course.id}')" class="py-2.5 px-3 rounded-xl bg-navy-50 hover:bg-navy-100 text-navy-900 border border-navy-200 text-xs sm:text-sm font-bold transition">
+                                    ${dict.manageRosterBtn}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function openCourseRoster(courseId) {
+            selectCourseById(courseId);
+            navigateTo('students');
+        }
+
+        // 9. REAL CAMERA QR ID CARD SCANNER & DUPLICATE PREVENTION WORKFLOW
+        function toggleCameraScanner() {
+            if (isCameraRunning) {
+                stopCameraScanner();
+            } else {
+                startCameraScanner();
+            }
+        }
+
+        function startCameraScanner() {
+            const readerBox = document.getElementById('qrReaderBox');
+            const placeholder = document.getElementById('cameraPlaceholder');
+            const statusMsg = document.getElementById('cameraStatusMessage');
+            const toggleLabel = document.getElementById('cameraToggleLabel');
+            const toggleBtn = document.getElementById('cameraToggleBtn');
+            const dict = i18n[state.lang];
+
+            if (typeof Html5Qrcode === 'undefined') {
+                showToast(
+                    state.lang === 'ar'
+                        ? 'مكتبة الكاميرا غير متوفرة حالياً، يمكنكِ استخدام محاكي البطاقات أدناه'
+                        : 'Camera QR library unavailable offline; please use the simulator below.',
+                    'error'
+                );
+                return;
+            }
+
+            readerBox.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+
+            html5QrScanner = new Html5Qrcode('qrReaderBox');
+            html5QrScanner.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: { width: 200, height: 200 } },
+                (decodedText) => {
+                    const now = Date.now();
+                    if (decodedText === lastScannedCode && now - lastScannedTimeMs < 2500) {
+                        return;
+                    }
+                    lastScannedCode = decodedText;
+                    lastScannedTimeMs = now;
+                    processScannedQrPayload(decodedText);
+                },
+                () => {
+                    // Ignore frame-by-frame decode misses
+                }
+            ).then(() => {
+                isCameraRunning = true;
+                toggleLabel.textContent = dict.stopCameraBtn;
+                toggleBtn.classList.remove('bg-emerald-500', 'hover:bg-emerald-600', 'text-navy-950');
+                toggleBtn.classList.add('bg-rose-600', 'hover:bg-rose-700', 'text-white');
+                showToast(
+                    state.lang === 'ar'
+                        ? 'تم تشغيل الكاميرا — وجّهي رمز QR الخاص ببطاقة المتدربة'
+                        : 'Camera active — Point at a trainee QR ID card',
+                    'info'
+                );
+            }).catch((err) => {
+                readerBox.classList.add('hidden');
+                placeholder.classList.remove('hidden');
+                statusMsg.textContent = state.lang === 'ar'
+                    ? 'تعذر الوصول إلى الكاميرا (يرجى السماح بصلاحية الكاميرا في المتصفح أو استخدام محاكي البطاقات أدناه).'
+                    : 'Camera access denied or unavailable. Please grant camera permission or use the card simulator below.';
+                showToast(
+                    state.lang === 'ar'
+                        ? 'تعذر تشغيل الكاميرا — تحققي من صلاحيات المتصفح'
+                        : 'Unable to access camera — check browser permissions',
+                    'error'
+                );
+                console.warn('Camera start error:', err);
+            });
+        }
+
+        function stopCameraScanner() {
+            const readerBox = document.getElementById('qrReaderBox');
+            const placeholder = document.getElementById('cameraPlaceholder');
+            const toggleLabel = document.getElementById('cameraToggleLabel');
+            const toggleBtn = document.getElementById('cameraToggleBtn');
+            const dict = i18n[state.lang];
+
+            if (html5QrScanner && isCameraRunning) {
+                html5QrScanner.stop().then(() => {
+                    html5QrScanner.clear();
+                }).catch(() => {});
+            }
+            isCameraRunning = false;
+            if (readerBox) readerBox.classList.add('hidden');
+            if (placeholder) placeholder.classList.remove('hidden');
+            if (toggleLabel) toggleLabel.textContent = dict.startCameraBtn;
+            if (toggleBtn) {
+                toggleBtn.classList.remove('bg-rose-600', 'hover:bg-rose-700', 'text-white');
+                toggleBtn.classList.add('bg-emerald-500', 'hover:bg-emerald-600', 'text-navy-950');
+            }
+        }
+
+        function processScannedQrPayload(rawPayload) {
+            // Supports formats like "WATHIQ-445201" or "445201"
+            const cleanedId = rawPayload.replace(/^WATHIQ-/i, '').trim();
+            document.getElementById('traineeScanInput').value = cleanedId;
+
+            const course = getSelectedCourse();
+            const trainee = course.students.find(s => s.id === cleanedId);
+
+            if (!trainee) {
+                // Check if trainee belongs to another section
+                let foundOtherCourse = null;
+                state.courses.forEach(c => {
+                    if (c.students.some(s => s.id === cleanedId)) foundOtherCourse = c;
+                });
+
+                if (foundOtherCourse) {
+                    const otherName = state.lang === 'ar' ? foundOtherCourse.nameAr : foundOtherCourse.nameEn;
+                    showToast(
+                        state.lang === 'ar'
+                            ? `تنبيه: البطاقة (${cleanedId}) تتبع لمقرر (${otherName} - شعبة ${foundOtherCourse.section}) وليست في هذه الشعبة!`
+                            : `Alert: Card (${cleanedId}) belongs to (${otherName} - Sec ${foundOtherCourse.section}), not this section!`,
+                        'error'
+                    );
+                } else {
+                    showToast(
+                        state.lang === 'ar'
+                            ? `رمز QR غير معروف (${rawPayload}) — البطاقة غير مسجلة في النظام`
+                            : `Unrecognized QR ID (${rawPayload}) — Trainee not found`,
+                        'error'
+                    );
+                }
+                return;
+            }
+
+            const tName = state.lang === 'ar' ? trainee.nameAr : trainee.nameEn;
+
+            // STRICT DUPLICATE PREVENTION IN THE SAME LECTURE
+            if (trainee.status === 'present') {
+                showToast(
+                    state.lang === 'ar'
+                        ? `تنبيه تكرار: المتدربة (${tName} - ${trainee.id}) مسجلة حضور مسبقاً في هذه المحاضرة!`
+                        : `Duplicate Scan Prevented: Trainee (${tName} - ${trainee.id}) is already marked present!`,
+                    'warning'
+                );
+                return;
+            }
+
+            // Record Attendance
+            const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            trainee.status = 'present';
+            trainee.scanTime = nowStr;
+            saveState();
+
+            // Update Last Scan Banner
+            const banner = document.getElementById('lastScanResultBanner');
+            if (banner) {
+                banner.classList.remove('hidden');
+                document.getElementById('lastScanTraineeInfo').textContent = `${tName} (${trainee.id})`;
+                document.getElementById('lastScanTimestamp').textContent = nowStr;
+            }
+
+            renderAllViews();
+            showToast(
+                state.lang === 'ar'
+                    ? `تم تسجيل حضور المتدربة: ${tName} (${trainee.id})`
+                    : `Attendance Recorded: ${tName} (${trainee.id})`,
+                'success'
+            );
+        }
+
+        function handleManualOrSimulatedScan() {
+            const val = document.getElementById('traineeScanInput').value.trim();
+            if (!val) return;
+            processScannedQrPayload(val);
+        }
+
+        function simulateNextUnscannedTrainee() {
+            const course = getSelectedCourse();
+            const unscanned = course.students.find(s => s.status !== 'present');
+            const target = unscanned || course.students[0];
+            if (target) {
+                processScannedQrPayload(`WATHIQ-${target.id}`);
+            }
+        }
+
+        function renderScannerView() {
+            const course = getSelectedCourse();
+            const dict = i18n[state.lang];
+
+            document.getElementById('sessionCourseCode').textContent = course.code;
+            document.getElementById('sessionSectionBadge').textContent = `${dict.sectionWord} ${course.section}`;
+            document.getElementById('sessionCourseTitle').textContent = state.lang === 'ar' ? course.nameAr : course.nameEn;
+            document.getElementById('sessionScheduleText').textContent = state.lang === 'ar' ? course.scheduleAr : course.scheduleEn;
+
+            const total = course.students.length;
+            const present = course.students.filter(s => s.status === 'present' || s.status === 'late').length;
+            const absent = total - present;
+            const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+
+            document.getElementById('sessionPresentCount').textContent = present;
+            document.getElementById('sessionAbsentCount').textContent = absent;
+            document.getElementById('sessionRatePercent').textContent = `${pct}%`;
+            document.getElementById('sessionProgressBar').style.width = `${pct}%`;
+
+            // Populate Trainee Simulator Dropdown
+            const simSel = document.getElementById('traineeSimSelect');
+            if (simSel) {
+                simSel.innerHTML = course.students.map(s => {
+                    const name = state.lang === 'ar' ? s.nameAr : s.nameEn;
+                    const mark = s.status === 'present' ? '✓' : '○';
+                    return `<option value="${s.id}">${mark} ${s.id} — ${name}</option>`;
+                }).join('');
+                if (course.students.length > 0 && !document.getElementById('traineeScanInput').value) {
+                    document.getElementById('traineeScanInput').value = course.students[0].id;
+                }
+            }
+
+            // Render Live Session Roster Table
+            const tbody = document.getElementById('liveSessionRosterBody');
+            if (tbody) {
+                const statusBadgeMap = {
+                    present: { label: dict.statusPresent, cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+                    absent: { label: dict.statusAbsent, cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+                    late: { label: dict.statusLate, cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+                    excused: { label: dict.statusExcused, cls: 'bg-sky-50 text-sky-700 border-sky-200' }
+                };
+
+                tbody.innerHTML = course.students.map(s => {
+                    const name = state.lang === 'ar' ? s.nameAr : s.nameEn;
+                    const st = statusBadgeMap[s.status] || statusBadgeMap.absent;
+                    return `
+                        <tr class="${s.status === 'present' ? 'bg-emerald-50/30' : ''} transition">
+                            <td class="py-2.5 px-3 font-english font-semibold text-slate-600">${s.id}</td>
+                            <td class="py-2.5 px-3 font-bold text-navy-900">${name}</td>
+                            <td class="py-2.5 px-3 text-center font-english text-xs text-slate-500">${s.scanTime || '-'}</td>
+                            <td class="py-2.5 px-3 text-center">
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${st.cls}">
+                                    ${st.label}
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        function endAttendanceSession() {
+            stopCameraScanner();
+            const course = getSelectedCourse();
+            const present = course.students.filter(s => s.status === 'present').length;
+            const absent = course.students.filter(s => s.status === 'absent').length;
+            const excused = course.students.filter(s => s.status === 'excused' || s.status === 'late').length;
+            const today = new Date().toISOString().split('T')[0];
+
+            const attendeesList = course.students
+                .filter(s => s.status === 'present' || s.status === 'late')
+                .map(s => `${state.lang === 'ar' ? s.nameAr : s.nameEn} (${s.id})`);
+
+            state.records.unshift({
+                id: `REC-${Date.now()}`,
+                date: today,
+                courseId: course.id,
+                present,
+                absent,
+                excused,
+                total: course.students.length,
+                attendees: attendeesList
+            });
+
+            // Update course average rate
+            const newRate = Math.round(((present + excused) / course.students.length) * 100);
+            course.avgRate = Math.round((course.avgRate + newRate) / 2);
+
+            saveState();
+            renderAllViews();
+
+            showToast(
+                state.lang === 'ar'
+                    ? `تم إنهاء الجلسة واعتماد السجل (${present} حاضرات / ${absent} غائبات)`
+                    : `Session Ended & Saved (${present} Present / ${absent} Absent)`,
+                'success'
+            );
+            navigateTo('records');
+        }
+
+        // 10. SAMPLE TRAINEE QR ID CARDS MODAL (SCANNABLE WITH REAL CAMERA!)
+        function openSampleCardsModal() {
+            const modal = document.getElementById('sampleCardsModal');
+            const grid = document.getElementById('sampleCardsGrid');
+            const course = getSelectedCourse();
+            const dict = i18n[state.lang];
+
+            modal.classList.remove('hidden');
+            grid.innerHTML = course.students.map(s => {
+                const name = state.lang === 'ar' ? s.nameAr : s.nameEn;
+                const qrPayload = `WATHIQ-${s.id}`;
+                return `
+                    <div class="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex items-center justify-between gap-3">
+                        <div class="space-y-1">
+                            <span class="px-2 py-0.5 rounded-md bg-navy-900 text-white text-[10px] font-bold font-english">${course.code} • ${dict.sectionWord} ${course.section}</span>
+                            <h4 class="font-extrabold text-navy-900 text-base">${name}</h4>
+                            <p class="text-xs font-english text-slate-500">ID: ${s.id}</p>
+                            <button onclick="quickScanFromCardModal('${qrPayload}')" class="mt-1.5 px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition">
+                                ${state.lang === 'ar' ? 'مسح فوري للتحضير ✓' : 'Instant Scan Check-In ✓'}
+                            </button>
+                        </div>
+                        <div class="p-2 bg-white border border-slate-200 rounded-xl shrink-0">
+                            <canvas id="qr-canvas-${s.id}" width="96" height="96"></canvas>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Render crisp QR codes into each canvas
+            course.students.forEach(s => {
+                const canvas = document.getElementById(`qr-canvas-${s.id}`);
+                if (canvas && typeof QRious !== 'undefined') {
+                    new QRious({
+                        element: canvas,
+                        value: `WATHIQ-${s.id}`,
+                        size: 96,
+                        foreground: '#0F294A',
+                        background: '#FFFFFF',
+                        level: 'M'
+                    });
+                }
+            });
+        }
+
+        function closeSampleCardsModal() {
+            document.getElementById('sampleCardsModal').classList.add('hidden');
+        }
+
+        function quickScanFromCardModal(payload) {
+            closeSampleCardsModal();
+            if (state.currentView !== 'scanner') {
+                navigateTo('scanner');
+            }
+            processScannedQrPayload(payload);
+        }
+
+        function previewSingleTraineeCard(studentId) {
+            const course = getSelectedCourse();
+            const student = course.students.find(s => s.id === studentId);
+            if (!student) return;
+            openSampleCardsModal();
+        }
+
+        // 11. ATTENDANCE RECORDS TABLE
+        function renderAttendanceRecords() {
+            const tbody = document.getElementById('recordsTableBody');
+            if (!tbody) return;
+            const dict = i18n[state.lang];
+
+            const query = (document.getElementById('recordsSearchInput')?.value || '').toLowerCase();
+            const courseFilter = document.getElementById('recordsCourseFilter')?.value || 'ALL';
+            const dateFilter = document.getElementById('recordsDateFilter')?.value || '';
+
+            const filtered = state.records.filter(rec => {
+                const course = state.courses.find(c => c.id === rec.courseId) || state.courses[0];
+                const matchesCourse = courseFilter === 'ALL' || rec.courseId === courseFilter;
+                const matchesDate = !dateFilter || rec.date === dateFilter;
+                const searchable = `${rec.date} ${course.code} ${course.section} ${course.nameAr} ${course.nameEn}`.toLowerCase();
+                return matchesCourse && matchesDate && searchable.includes(query);
+            });
+
+            tbody.innerHTML = filtered.map(rec => {
+                const course = state.courses.find(c => c.id === rec.courseId) || state.courses[0];
+                const courseLabel = `${course.code} (${dict.sectionWord} ${course.section}) - ${state.lang === 'ar' ? course.nameAr : course.nameEn}`;
+                const rate = rec.total > 0 ? Math.round((rec.present / rec.total) * 100) : 0;
+                const badgeColor = rate >= 85 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : rate >= 75 ? 'bg-amber-50 text-amber-700 border-amber-200'
+                    : 'bg-rose-50 text-rose-700 border-rose-200';
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-3.5 px-4 font-english font-semibold text-slate-700">${rec.date}</td>
+                        <td class="py-3.5 px-4 font-bold text-navy-900">${courseLabel}</td>
+                        <td class="py-3.5 px-4 text-center font-bold text-emerald-600">${rec.present}</td>
+                        <td class="py-3.5 px-4 text-center font-bold text-rose-600">${rec.absent}</td>
+                        <td class="py-3.5 px-4 text-center font-semibold text-amber-600">${rec.excused}</td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-extrabold border ${badgeColor}">
+                                ${rate}%
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <button onclick="inspectRecordDetails('${rec.id}')" class="px-3 py-1 rounded-lg bg-navy-50 hover:bg-navy-100 text-navy-900 text-xs font-bold transition">
+                                ${dict.viewDetailsBtn}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function inspectRecordDetails(recId) {
+            const rec = state.records.find(r => r.id === recId);
+            if (!rec) return;
+            const course = state.courses.find(c => c.id === rec.courseId) || state.courses[0];
+            const dict = i18n[state.lang];
+
+            document.getElementById('recDetailTitle').textContent = `${course.code} (${dict.sectionWord} ${course.section}) — ${state.lang === 'ar' ? course.nameAr : course.nameEn}`;
+            document.getElementById('recDetailMeta').textContent = `${rec.date} • ${dict.colPresent}: ${rec.present} / ${rec.total}`;
+
+            const body = document.getElementById('recDetailBody');
+            const attendees = rec.attendees || [];
+            body.innerHTML = attendees.length > 0
+                ? attendees.map(name => `
+                    <div class="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100 flex items-center justify-between">
+                        <span class="font-bold text-navy-900">${name}</span>
+                        <span class="text-xs font-bold text-emerald-700">${dict.statusPresent} ✓</span>
+                    </div>
+                `).join('')
+                : `<p class="text-slate-500 text-center py-4">${state.lang === 'ar' ? 'لا توجد أسماء مسجلة في هذه الجلسة' : 'No attendees recorded in this session'}</p>`;
+
+            document.getElementById('recordDetailsModal').classList.remove('hidden');
+        }
+
+        // 12. FEMALE TRAINEES ROSTER MANAGEMENT
+        function renderStudentsRoster() {
+            const tbody = document.getElementById('studentsTableBody');
+            if (!tbody) return;
+
+            const course = getSelectedCourse();
+            const dict = i18n[state.lang];
+
+            const statusConfig = {
+                present: { label: dict.statusPresent, cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+                absent: { label: dict.statusAbsent, cls: 'bg-rose-50 text-rose-700 border-rose-200' },
+                late: { label: dict.statusLate, cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+                excused: { label: dict.statusExcused, cls: 'bg-sky-50 text-sky-700 border-sky-200' }
+            };
+
+            tbody.innerHTML = course.students.map(student => {
+                const name = state.lang === 'ar' ? student.nameAr : student.nameEn;
+                const st = statusConfig[student.status] || statusConfig.absent;
+                const pctColor = student.semesterPct < 80 ? 'text-rose-600 font-extrabold' : 'text-navy-900 font-bold';
+
+                return `
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <td class="py-3.5 px-4 font-english font-semibold text-slate-600">${student.id}</td>
+                        <td class="py-3.5 px-4 font-bold text-navy-900">${name}</td>
+                        <td class="py-3.5 px-4 text-center ${pctColor}">${student.semesterPct}%</td>
+                        <td class="py-3.5 px-4 text-center">
+                            <button onclick="previewSingleTraineeCard('${student.id}')" class="px-2.5 py-1 rounded-lg bg-navy-50 hover:bg-navy-100 text-navy-800 border border-navy-200 text-xs font-bold transition">
+                                QR ID
+                            </button>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold border ${st.cls}">
+                                ${st.label}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="flex flex-wrap items-center justify-center gap-1.5">
+                                <button onclick="setStudentStatus('${student.id}', 'present')" class="px-2.5 py-1 rounded-lg text-xs font-bold border transition ${student.status === 'present' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50'}">
+                                    ${dict.statusPresent}
+                                </button>
+                                <button onclick="setStudentStatus('${student.id}', 'absent')" class="px-2.5 py-1 rounded-lg text-xs font-bold border transition ${student.status === 'absent' ? 'bg-rose-600 text-white border-rose-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-rose-50'}">
+                                    ${dict.statusAbsent}
+                                </button>
+                                <button onclick="setStudentStatus('${student.id}', 'late')" class="px-2.5 py-1 rounded-lg text-xs font-bold border transition ${student.status === 'late' ? 'bg-amber-500 text-white border-amber-500' : 'bg-white text-slate-600 border-slate-200 hover:bg-amber-50'}">
+                                    ${dict.statusLate}
+                                </button>
+                                <button onclick="setStudentStatus('${student.id}', 'excused')" class="px-2.5 py-1 rounded-lg text-xs font-bold border transition ${student.status === 'excused' ? 'bg-sky-600 text-white border-sky-600' : 'bg-white text-slate-600 border-slate-200 hover:bg-sky-50'}">
+                                    ${dict.statusExcused}
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function setStudentStatus(studentId, newStatus) {
+            const course = getSelectedCourse();
+            const student = course.students.find(s => s.id === studentId);
+            if (!student) return;
+
+            student.status = newStatus;
+            student.scanTime = (newStatus === 'present' || newStatus === 'late')
+                ? new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+                : '-';
+            saveState();
+            renderAllViews();
+        }
+
+        function openAddStudentModal() {
+            document.getElementById('addStudentModal').classList.remove('hidden');
+        }
+
+        function closeAddStudentModal() {
+            document.getElementById('addStudentModal').classList.add('hidden');
+        }
+
+        function handleAddStudentSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('newStudentId').value.trim();
+            const nameAr = document.getElementById('newStudentNameAr').value.trim();
+            const nameEn = document.getElementById('newStudentNameEn').value.trim();
+
+            if (!id || !nameAr || !nameEn) return;
+
+            const course = getSelectedCourse();
+            if (course.students.some(s => s.id === id)) {
+                showToast(
+                    state.lang === 'ar' ? 'الرقم التدريبي مسجل مسبقاً في هذه الشعبة' : 'Trainee ID already exists in this section',
+                    'error'
+                );
+                return;
+            }
+
+            course.students.push({
+                id,
+                nameAr,
+                nameEn,
+                semesterPct: 100,
+                status: 'absent',
+                scanTime: '-'
+            });
+
+            document.getElementById('newStudentId').value = '';
+            document.getElementById('newStudentNameAr').value = '';
+            document.getElementById('newStudentNameEn').value = '';
+
+            saveState();
+            closeAddStudentModal();
+            renderAllViews();
+            showToast(
+                state.lang === 'ar' ? 'تمت إضافة المتدربة وإنشاء بطاقة QR الخاصة بها' : 'Female trainee added with QR ID card',
+                'success'
+            );
+        }
+
+        // 13. REPORTS, ANALYTICS & UTF-8 BOM CSV / EXCEL EXPORT
+        function renderReportsView() {
+            const dict = i18n[state.lang];
+            const totalTrainees = state.courses.reduce((acc, c) => acc + c.students.length, 0);
+            const avgRate = Math.round(state.courses.reduce((acc, c) => acc + c.avgRate, 0) / state.courses.length * 10) / 10;
+
+            document.getElementById('kpiAvgValue').textContent = `${avgRate}%`;
+            document.getElementById('kpiSessionsValue').textContent = state.records.length;
+            document.getElementById('kpiTraineesValue').textContent = totalTrainees;
+
+            const weeklyChart = document.getElementById('weeklyBarChart');
+            if (weeklyChart) {
+                weeklyChart.innerHTML = state.weeklyTrend.map(w => {
+                    const label = state.lang === 'ar' ? w.weekAr : w.weekEn;
+                    return `
+                        <div class="flex-1 flex flex-col items-center h-full justify-end group">
+                            <span class="text-xs font-extrabold text-navy-900 mb-1.5">${w.rate}%</span>
+                            <div class="w-full max-w-[44px] bg-navy-800 group-hover:bg-navy-600 rounded-t-xl transition-all duration-500" style="height: ${w.rate}%"></div>
+                            <span class="text-[11px] font-semibold text-slate-500 mt-2 text-center">${label}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            const compContainer = document.getElementById('courseComparisonBars');
+            if (compContainer) {
+                compContainer.innerHTML = state.courses.map(c => {
+                    const name = state.lang === 'ar' ? c.nameAr : c.nameEn;
+                    return `
+                        <div class="space-y-1">
+                            <div class="flex justify-between text-xs font-bold">
+                                <span class="text-navy-900">${c.code} (${dict.sectionWord} ${c.section}) • ${name}</span>
+                                <span class="text-navy-700">${c.avgRate}%</span>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full bg-navy-800 rounded-full" style="width: ${c.avgRate}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+
+            const lowList = document.getElementById('lowAttendanceList');
+            if (lowList) {
+                const atRisk = [];
+                state.courses.forEach(c => {
+                    c.students.forEach(s => {
+                        if (s.semesterPct < 80) {
+                            atRisk.push({ ...s, courseCode: c.code, section: c.section });
+                        }
+                    });
+                });
+
+                document.getElementById('kpiAlertsValue').textContent = atRisk.length;
+
+                lowList.innerHTML = atRisk.map(st => {
+                    const sName = state.lang === 'ar' ? st.nameAr : st.nameEn;
+                    return `
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-rose-50/70 border border-rose-100">
+                            <div>
+                                <p class="font-bold text-slate-800">${sName}</p>
+                                <p class="text-[11px] text-slate-500 font-english">${st.id} • ${st.courseCode} (${dict.sectionWord} ${st.section})</p>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-xs font-extrabold">${st.semesterPct}%</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        function exportReportCSV() {
+            const headers = ['Date,Course Code,Section,Course Name (AR),Course Name (EN),Present,Absent,Excused/Late,Total Trainees,Attendance Rate'];
+            const rows = state.records.map(rec => {
+                const course = state.courses.find(c => c.id === rec.courseId) || state.courses[0];
+                const rate = rec.total > 0 ? Math.round((rec.present / rec.total) * 100) : 0;
+                return `${rec.date},${course.code},${course.section},"${course.nameAr}","${course.nameEn}",${rec.present},${rec.absent},${rec.excused},${rec.total},${rate}%`;
+            });
+
+            // Add UTF-8 BOM (\uFEFF) so Arabic characters open properly in Microsoft Excel
+            const csvString = '\uFEFF' + [headers, ...rows].join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `WATHIQ_Attendance_Report_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast(
+                state.lang === 'ar' ? 'تم تصدير تقرير الحضور بصيغة CSV بنجاح' : 'CSV Attendance Report downloaded',
+                'success'
+            );
+        }
+
+        function exportReportExcel() {
+            let tableHtml = `
+                <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                <head><meta charset="UTF-8"></head>
+                <body>
+                <table border="1">
+                    <tr>
+                        <th>Date / التاريخ</th>
+                        <th>Course / المقرر</th>
+                        <th>Section / الشعبة</th>
+                        <th>Present / حاضرات</th>
+                        <th>Absent / غائبات</th>
+                        <th>Excused or Late / بعذر أو متأخرات</th>
+                        <th>Total / الإجمالي</th>
+                        <th>Rate / النسبة</th>
+                    </tr>
+            `;
+
+            state.records.forEach(rec => {
+                const course = state.courses.find(c => c.id === rec.courseId) || state.courses[0];
+                const rate = rec.total > 0 ? Math.round((rec.present / rec.total) * 100) : 0;
+                tableHtml += `
+                    <tr>
+                        <td>${rec.date}</td>
+                        <td>${course.code} - ${course.nameAr}</td>
+                        <td>${course.section}</td>
+                        <td>${rec.present}</td>
+                        <td>${rec.absent}</td>
+                        <td>${rec.excused}</td>
+                        <td>${rec.total}</td>
+                        <td>${rate}%</td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += '</table></body></html>';
+            const blob = new Blob(['\uFEFF' + tableHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `WATHIQ_Attendance_Report_${new Date().toISOString().split('T')[0]}.xls`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast(
+                state.lang === 'ar' ? 'تم تصدير ملف Excel بنجاح' : 'Excel (.xls) Report downloaded',
+                'success'
+            );
+        }
+
+        // 14. TOAST NOTIFICATION SYSTEM
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const colors = {
+                success: 'bg-navy-900 border-emerald-400 text-white',
+                warning: 'bg-amber-900 border-amber-400 text-white',
+                error: 'bg-rose-900 border-rose-400 text-white',
+                info: 'bg-navy-800 border-navy-400 text-white'
+            };
+
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-4 py-3 rounded-2xl border-s-4 shadow-lg text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 transition-all duration-300 ${colors[type] || colors.info}`;
+            toast.innerHTML = `<span>${message}</span>`;
+
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(8px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3400);
+        }
+    </script>
+</body>
+</html>
